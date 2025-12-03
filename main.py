@@ -39,3 +39,7 @@ async def western_union(from_country: str = Query("ca"), to_country: str = Query
         return {"provider": "Western Union", "rate": rate}
     except Exception as e:
         return {"provider": "Western Union", "rate": None, "error": str(e)}
+
+@app.get("/ping")
+def ping():
+    return {"status": "ok"}
