@@ -5,15 +5,27 @@ import asyncio
 
 app = FastAPI()
 
-async def scrape_moneygram(from_country: str, to_country: str):
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
-        page = await browser.new_page()
-        url = f"https://www.moneygram.com/{from_country}/en/corridor/{to_country}"
-        await page.goto(url, wait_until="domcontentloaded")
-        text = await page.locator('xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]').inner_text()
-        await browser.close()
-        return float(re.search(r"([\d.]+)", text).group(1))
+async def fetch_moneygram_rate(results):
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
+            page = await browser.new_page()
+            await page.goto("https://www.moneygram.com/ca/en/corridor/tunisia", wait_until="domcontentloaded")
+
+            await page.wait_for_selector(
+                'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+            )
+            text = await page.locator(
+                'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+            ).inner_text()
+
+            text = text.split("=")[1].strip()
+            rate = re.search(r"([\d.]+)", text).group(1)
+            results["MoneyGram"] = float(rate)
+
+            await browser.close()
+    except Exception:
+        results["MoneyGram"] = "not found"
 
 async def fetch_wu_rate(results):
     try:
@@ -47,12 +59,10 @@ async def fetch_wu_rate(results):
         results["error"] = str(e)
 
 @app.get("/moneygram")
-async def moneygram(from_country: str = Query("ca"), to_country: str = Query("tunisia")):
-    try:
-        rate = await scrape_moneygram(from_country, to_country)
-        return {"provider": "MoneyGram", "rate": rate}
-    except Exception as e:
-        return {"provider": "MoneyGram", "rate": None, "error": str(e)}
+async def moneygram():
+    results = {}
+    await fetch_moneygram_rate(results)   # just await, no asyncio.run()
+    return results
         
 # Western Union (async)
 @app.get("/wu")
