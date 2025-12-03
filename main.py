@@ -18,14 +18,13 @@ async def scrape_wu(from_country: str, to_country: str):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
-        url = f"https://www.westernunion.com/{from_country}/en/send-money-to-{to_country}.html"
+        url = f"https://www.westernunion.com/ca/en/send-money-to-tunisia.html"
         await page.goto(url, wait_until="domcontentloaded")
         text = await page.locator('xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span').inner_text()
-        html = await page.content()
-        print(html)
-        match = re.search(r"([\d.]+)", text)
+        print(text)
+        match = re.search(r"([\d.]+)", text).group(1)
         if match:
-            rate = float(match.group(1))
+            rate = float(match)
         else:
             rate = None
         await browser.close()
