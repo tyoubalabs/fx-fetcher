@@ -8,7 +8,7 @@ app = FastAPI()
 async def fetch_moneygram_rate(results):
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
+            browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
             page = await browser.new_page()
             await page.goto("https://www.moneygram.com/ca/en/corridor/tunisia", wait_until="domcontentloaded")
 
@@ -18,7 +18,7 @@ async def fetch_moneygram_rate(results):
             text = await page.locator(
                 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
             ).inner_text()
-
+            print(text)
             text = text.split("=")[1].strip()
             rate = re.search(r"([\d.]+)", text).group(1)
             results["MoneyGram"] = float(rate)
