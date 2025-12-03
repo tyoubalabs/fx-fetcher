@@ -42,6 +42,7 @@ async def moneygram(from_country: str = Query("ca"), to_country: str = Query("tu
 # Western Union (async)
 @app.get("/wu")
 async def wu():
+    results = {}
     asyncio.run(fetch_wu_rate(results))
 
 @app.get("/ping")
