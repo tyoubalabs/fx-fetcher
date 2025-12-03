@@ -18,18 +18,33 @@ async def scrape_moneygram(from_country: str, to_country: str):
 async def fetch_wu_rate(results):
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled"]
+            )
             page = await browser.new_page()
-            await page.goto("https://www.westernunion.com/ca/en/send-money-to-tunisia.html", wait_until="domcontentloaded")
+            await page.goto(
+                "https://www.westernunion.com/ca/en/send-money-to-tunisia.html",
+                wait_until="domcontentloaded"
+            )
 
-            await page.wait_for_selector('xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span')
-            text = await page.locator('xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span').inner_text()
-            rate = re.search(r"([\d.]+)", text).group(1)
-            results["Western Union"] = float(rate)
+            # Wait for the element and extract text
+            locator = page.locator(
+                'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+            )
+            await locator.wait_for()
+            text = await locator.inner_text()
+
+            match = re.search(r"([\d.]+)", text)
+            if match:
+                results["Western Union"] = float(match.group(1))
+            else:
+                results["Western Union"] = None
 
             await browser.close()
-    except Exception:
-        results["Western Union"] = "not found"
+    except Exception as e:
+        results["Western Union"] = None
+        results["error"] = str(e)
 
 @app.get("/moneygram")
 async def moneygram(from_country: str = Query("ca"), to_country: str = Query("tunisia")):
@@ -43,7 +58,8 @@ async def moneygram(from_country: str = Query("ca"), to_country: str = Query("tu
 @app.get("/wu")
 async def wu():
     results = {}
-    asyncio.run(fetch_wu_rate(results))
+    await fetch_wu_rate(results)   # just await, no asyncio.run()
+    return results
 
 @app.get("/ping")
 def ping():
