@@ -8,7 +8,7 @@ app = FastAPI()
 async def fetch_moneygram_rate(results):
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
+            browser = await p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
             page = await browser.new_page()
             await page.goto("https://www.moneygram.com/ca/en/corridor/tunisia", wait_until="domcontentloaded")
 
@@ -24,8 +24,9 @@ async def fetch_moneygram_rate(results):
             results["MoneyGram"] = float(rate)
 
             await browser.close()
-    except Exception:
+    except Exception as e:
         results["MoneyGram"] = "not found"
+        results["error"] = str(e)
 
 async def fetch_wu_rate(results):
     try:
