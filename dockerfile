@@ -5,6 +5,8 @@ WORKDIR /app
 # Install system dependencies required by Chromium
 RUN apt-get update && apt-get install -y \
     wget \
+    curl \
+    gnupg \
     libnss3 \
     libatk1.0-0 \
     libatk-bridge2.0-0 \
@@ -26,8 +28,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers into the image
-RUN playwright install --with-deps chromium
+# Force Playwright to install browsers into /ms-playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN playwright install chromium
 
 COPY . .
 
