@@ -14,21 +14,21 @@ async def scrape_moneygram(from_country: str, to_country: str):
         await browser.close()
         return float(re.search(r"([\d.]+)", text).group(1))
 
-async def scrape_wu(from_country: str, to_country: str):
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
-        url = f"https://www.westernunion.com/ca/en/send-money-to-tunisia.html"
-        await page.goto(url, wait_until="domcontentloaded")
-        text = await page.locator('xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span').inner_text()
-        print(text)
-        match = re.search(r"([\d.]+)", text).group(1)
-        if match:
-            rate = float(match)
-        else:
-            rate = None
-        await browser.close()
-        return rate
+async def fetch_wu_rate(results):
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
+            page = await browser.new_page()
+            await page.goto("https://www.westernunion.com/ca/en/send-money-to-tunisia.html", wait_until="domcontentloaded")
+
+            await page.wait_for_selector('xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span')
+            text = await page.locator('xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span').inner_text()
+            rate = re.search(r"([\d.]+)", text).group(1)
+            results["Western Union"] = float(rate)
+
+            await browser.close()
+    except Exception:
+        results["Western Union"] = "not found"
 
 @app.get("/moneygram")
 async def moneygram(from_country: str = Query("ca"), to_country: str = Query("tunisia")):
@@ -37,14 +37,10 @@ async def moneygram(from_country: str = Query("ca"), to_country: str = Query("tu
         return {"provider": "MoneyGram", "rate": rate}
     except Exception as e:
         return {"provider": "MoneyGram", "rate": None, "error": str(e)}
-
+        
+# Western Union (async)
 @app.get("/wu")
-async def western_union(from_country: str = Query("ca"), to_country: str = Query("tunisia")):
-    try:
-        rate = await scrape_wu(from_country, to_country)
-        return {"provider": "Western Union", "rate": rate}
-    except Exception as e:
-        return {"provider": "Western Union", "rate": None, "error": str(e)}
+asyncio.run(fetch_wu_rate(results))
 
 @app.get("/ping")
 def ping():
