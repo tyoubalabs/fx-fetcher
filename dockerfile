@@ -1,5 +1,5 @@
 # Use the official Playwright image with Python + browsers preinstalled
-FROM mcr.microsoft.com/playwright/python:v1.49.0-focal
+FROM mcr.microsoft.com/playwright/python:v1.56.0-noble
 
 WORKDIR /app
 
