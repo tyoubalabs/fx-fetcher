@@ -18,8 +18,7 @@ RUN playwright install --with-deps chromium
 
 COPY . .
 
-# Expose the dynamic port
-EXPOSE ${PORT}
+EXPOSE $PORT
 
-# Run FastAPI under Xvfb, binding to Render's assigned port
-CMD ["xvfb-run", "-a", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "${PORT}"]
+# ✅ Shell form CMD so $PORT expands
+CMD xvfb-run -a uvicorn main:app --host 0.0.0.0 --port $PORT
