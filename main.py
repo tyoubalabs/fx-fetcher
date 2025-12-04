@@ -1,14 +1,16 @@
 from fastapi import FastAPI, Query
 from playwright.async_api import async_playwright
 import re
-import asyncio
 
 app = FastAPI()
 
 async def fetch_moneygram_rate(results):
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
+            browser = await p.chromium.launch(
+                headless=False,
+                args=["--disable-blink-features=AutomationControlled"]
+            )
             page = await browser.new_page()
             await page.goto("https://www.moneygram.com/ca/en/corridor/tunisia", wait_until="domcontentloaded")
 
@@ -28,25 +30,69 @@ async def fetch_moneygram_rate(results):
         results["MoneyGram"] = "not found"
         results["error"] = str(e)
 
-async def fetch_wu_rate(results):
+
+# Western Union configuration mapping
+WU_CONFIG = {
+    ("CAD", "EGP"): {
+        "url": "https://www.westernunion.com/ca/en/send-money-to-egypt.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("CAD", "TND"): {
+        "url": "https://www.westernunion.com/ca/en/send-money-to-tunisia.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("CAD", "MAD"): {
+        "url": "https://www.westernunion.com/ca/en/send-money-to-morocco.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("USD", "EGP"): {
+        "url": "https://www.westernunion.com/us/en/send-money-to-egypt.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("USD", "TND"): {
+        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-tnd-rate.html",
+        "selector": "span.exchange-rate"  # adjust after inspecting
+    },
+    ("USD", "MAD"): {
+        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-mad-rate.html",
+        "selector": "span.exchange-rate"  # adjust after inspecting
+    },
+    ("EUR", "TND"): {
+        "url": "https://www.westernunion.com/fr/en/send-money-to-tunisia.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("EUR", "MAD"): {
+        "url": "https://www.westernunion.com/fr/en/send-money-to-morocco.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("EUR", "EGP"): {
+        "url": "https://www.westernunion.com/de/en/web/send-money/start?ReceiveCountry=EG&ISOCurrency=EGP&SendAmount=100.00&FundsOut=BA&FundsIn=WUPay",
+        "selector": 'xpath=//*[@id="smoExchangeRate"]/text()[2]'
+    },
+}
+
+
+async def fetch_wu_rate(results, from_currency: str, to_currency: str):
     try:
+        key = (from_currency.upper(), to_currency.upper())
+        if key not in WU_CONFIG:
+            results["Western Union"] = None
+            results["error"] = f"Unsupported currency pair {from_currency}->{to_currency}"
+            return
+
+        config = WU_CONFIG[key]
         async with async_playwright() as p:
             browser = await p.chromium.launch(
                 headless=True,
                 args=["--disable-blink-features=AutomationControlled"]
             )
             page = await browser.new_page()
-            await page.goto(
-                "https://www.westernunion.com/ca/en/send-money-to-tunisia.html",
-                wait_until="domcontentloaded"
-            )
+            await page.goto(config["url"], wait_until="domcontentloaded")
 
-            # Wait for the element and extract text
-            locator = page.locator(
-                'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
-            )
+            locator = page.locator(config["selector"])
             await locator.wait_for()
             text = await locator.inner_text()
+            print(f"[WU DEBUG] Captured text for {from_currency}->{to_currency}: {text}")
 
             match = re.search(r"([\d.]+)", text)
             if match:
@@ -59,18 +105,20 @@ async def fetch_wu_rate(results):
         results["Western Union"] = None
         results["error"] = str(e)
 
+
 @app.get("/moneygram")
 async def moneygram():
     results = {}
-    await fetch_moneygram_rate(results)   # just await, no asyncio.run()
+    await fetch_moneygram_rate(results)
     return results
-        
-# Western Union (async)
+
+
 @app.get("/wu")
-async def wu():
+async def wu(from_currency: str = Query(...), to_currency: str = Query(...)):
     results = {}
-    await fetch_wu_rate(results)   # just await, no asyncio.run()
+    await fetch_wu_rate(results, from_currency, to_currency)
     return results
+
 
 @app.get("/ping")
 def ping():
