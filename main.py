@@ -41,7 +41,27 @@ WU_CONFIG = {
         "url": "https://www.westernunion.com/ca/en/send-money-to-tunisia.html",
         "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
     },
-    # ... other pairs ...
+    ("CAD", "MAD"): {
+        "url": "https://www.westernunion.com/ca/en/send-money-to-morocco.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+
+    ("USD", "TND"): {
+        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-tnd-rate.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'  # adjust after inspecting
+    },
+    ("USD", "MAD"): {
+        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-mad-rate.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'  # adjust after inspecting
+    },
+    ("EUR", "TND"): {
+        "url": "https://www.westernunion.com/fr/en/send-money-to-tunisia.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("EUR", "MAD"): {
+        "url": "https://www.westernunion.com/fr/en/send-money-to-morocco.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
 }
 
 async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
@@ -67,7 +87,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
 @app.get("/refresh")
 async def refresh():
     results = {}
-    results["MoneyGram"] = await fetch_moneygram_rate()
+    #results["MoneyGram"] = await fetch_moneygram_rate()
     for (from_cur, to_cur) in WU_CONFIG.keys():
         results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
     with open(CACHE_FILE, "w") as f:
