@@ -1,8 +1,16 @@
 from fastapi import FastAPI, Query
 from playwright.async_api import async_playwright
+from fastapi.middleware.cors import CORSMiddleware
 import re
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # or restrict to your app domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 async def fetch_moneygram_rate(results):
     try:
