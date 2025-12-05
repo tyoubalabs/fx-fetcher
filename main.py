@@ -114,18 +114,53 @@ async def refresh():
     return {"status": "refresh scheduled"}
 
 async def refresh_rates_once():
+    # Load existing cache if it exists
+    old_cache = {}
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r") as f:
+                old_cache = json.load(f)
+        except Exception as e:
+            print("[CACHE ERROR] Failed to read old cache:", e)
+
+    old_rates = old_cache.get("rates", {})
+
     results = {}
-    # MoneyGram pairs
+
+    # --- MoneyGram pairs ---
     for (from_cur, to_cur) in MG_CONFIG.keys():
-        results[f"MG_{from_cur}_{to_cur}"] = await fetch_moneygram_rate(from_cur, to_cur)
+        try:
+            rate = await fetch_moneygram_rate(from_cur, to_cur)
+            if rate is not None:
+                results[f"MG_{from_cur}_{to_cur}"] = rate
+            else:
+                # fallback to old value
+                results[f"MG_{from_cur}_{to_cur}"] = old_rates.get(f"MG_{from_cur}_{to_cur}")
+                print(f"[MG ERROR] {from_cur}->{to_cur} scrape failed, kept old value {results[f'MG_{from_cur}_{to_cur}']}")
+        except Exception as e:
+            results[f"MG_{from_cur}_{to_cur}"] = old_rates.get(f"MG_{from_cur}_{to_cur}")
+            print(f"[MG EXCEPTION] {from_cur}->{to_cur}: {e}, kept old value {results[f'MG_{from_cur}_{to_cur}']}")
 
-    # Western Union pairs
+    # --- Western Union pairs ---
     for (from_cur, to_cur) in WU_CONFIG.keys():
-        results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
+        try:
+            rate = await fetch_wu_rate(from_cur, to_cur)
+            if rate is not None:
+                results[f"WU_{from_cur}_{to_cur}"] = rate
+            else:
+                results[f"WU_{from_cur}_{to_cur}"] = old_rates.get(f"WU_{from_cur}_{to_cur}")
+                print(f"[WU ERROR] {from_cur}->{to_cur} scrape failed, kept old value {results[f'WU_{from_cur}_{to_cur}']}")
+        except Exception as e:
+            results[f"WU_{from_cur}_{to_cur}"] = old_rates.get(f"WU_{from_cur}_{to_cur}")
+            print(f"[WU EXCEPTION] {from_cur}->{to_cur}: {e}, kept old value {results[f'WU_{from_cur}_{to_cur}']}")
 
+    # --- Write new cache ---
+    new_cache = {"timestamp": time.time(), "rates": results}
     with open(CACHE_FILE, "w") as f:
-        json.dump({"timestamp": time.time(), "rates": results}, f)
+        json.dump(new_cache, f)
+
     print("[CACHE UPDATED]")
+    print("[CACHE CONTENT]", json.dumps(new_cache, indent=2))
 
 
 # --- Endpoints that read cache ---
