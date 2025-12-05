@@ -86,7 +86,11 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
 # --- Refresh endpoint ---
 @app.get("/refresh")
 async def refresh():
-    # Schedule the heavy scraping in background
+    # Write a placeholder so /wu doesn’t error
+    with open(CACHE_FILE, "w") as f:
+        json.dump({"timestamp": time.time(), "rates": {}}, f)
+
+    # Schedule the heavy scrape
     asyncio.create_task(refresh_rates_once())
     return {"status": "refresh scheduled"}
 
