@@ -2,6 +2,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from playwright.async_api import async_playwright
 import re, json, time, os
+import asyncio
 import logging
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -88,8 +89,9 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
         return None
 
 # --- Refresh endpoint ---
-@app.get("/refresh")
+#@app.get("/refresh")
 async def refresh():
+   while True: 
     results = {}
     #results["MoneyGram"] = await fetch_moneygram_rate()
     for (from_cur, to_cur) in WU_CONFIG.keys():
@@ -98,7 +100,9 @@ async def refresh():
     with open(CACHE_FILE, "w") as f:
         json.dump({"timestamp": time.time(), "rates": results}, f)
     logging.info("[CACHE UPDATED]")
-    return {"status": "cache updated", "rates": results}
+    # sleep 15 minutes
+    await asyncio.sleep(900)
+    #return {"status": "cache updated", "rates": results}
 
 # --- Endpoints that read cache ---
 @app.get("/moneygram")
@@ -121,3 +125,7 @@ async def wu(from_currency: str = Query(...), to_currency: str = Query(...)):
 @app.get("/ping")
 def ping():
     return {"status": "ok"}
+    
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(refresh())
