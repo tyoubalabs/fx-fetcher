@@ -96,6 +96,8 @@ async def fetch_wu_rate(results, from_currency: str, to_currency: str):
             )
             page = await browser.new_page()
             await page.goto(config["url"], timeout=60000)
+            html = await page.content()
+            print(html[:2000])
             await page.wait_for_selector(config["selector"], timeout=60000)
             text = await page.locator(config["selector"]).inner_text()
 
