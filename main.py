@@ -47,15 +47,15 @@ WU_CONFIG = {
     },
     ("USD", "EGP"): {
         "url": "https://www.westernunion.com/us/en/web/send-money/start?ReceiveCountry=EG&ISOCurrency=EGP&SendAmount=100.00&FundsOut=BA&FundsIn=WUPay",
-        "selector": '//*[@id="smoExchangeRate"]/text()[2]'
+        "selector": 'xpath=//*[@id="smoExchangeRate"]/text()[2]'
     },
     ("USD", "TND"): {
         "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-tnd-rate.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'  # adjust after inspecting
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'  # adjust after inspecting
     },
     ("USD", "MAD"): {
         "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-mad-rate.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'  # adjust after inspecting
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'  # adjust after inspecting
     },
     ("EUR", "TND"): {
         "url": "https://www.westernunion.com/fr/en/send-money-to-tunisia.html",
@@ -83,7 +83,7 @@ async def fetch_wu_rate(results, from_currency: str, to_currency: str):
         config = WU_CONFIG[key]
         async with async_playwright() as p:
             browser = await p.chromium.launch(
-                headless=True,
+                headless=False,
                 args=["--disable-blink-features=AutomationControlled"]
             )
             page = await browser.new_page()
