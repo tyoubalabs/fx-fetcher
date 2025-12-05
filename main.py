@@ -111,6 +111,7 @@ async def refresh_rates():
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(refresh_rates())
+    print("[STARTUP] Background refresh_rates() scheduled")
 
 
 # --- Endpoints ---
