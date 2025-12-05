@@ -54,7 +54,7 @@ WU_CONFIG = {
         "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
     },
     ("USD", "EGP"): {
-        "url": "https://www.westernunion.com/us/en/web/send-money/start?ReceiveCountry=EG&ISOCurrency=EGP&SendAmount=100.00&FundsOut=BA&FundsIn=WUPay",
+        "url": "https://www.westernunion.com/us/en/web/send-money/start?ReceiveCountry=EG&ISOCurrency=EGP&SendAmount=100.00&FundsOut=BA&FundsIn=WUPay.html",
         "selector": 'xpath=//*[@id="smoExchangeRate"]/text()[2]'
     },
     ("USD", "TND"): {
@@ -74,7 +74,7 @@ WU_CONFIG = {
         "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
     },
     ("EUR", "EGP"): {
-        "url": "https://www.westernunion.com/de/en/web/send-money/start?ReceiveCountry=EG&ISOCurrency=EGP&SendAmount=100.00&FundsOut=BA&FundsIn=WUPay",
+        "url": "https://www.westernunion.com/de/en/web/send-money/start?ReceiveCountry=EG&ISOCurrency=EGP&SendAmount=100.00&FundsOut=BA&FundsIn=WUPay.html",
         "selector": 'xpath=//*[@id="smoExchangeRate"]/text()[2]'
     },
 }
