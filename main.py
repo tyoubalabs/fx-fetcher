@@ -95,11 +95,10 @@ async def fetch_wu_rate(results, from_currency: str, to_currency: str):
                 args=["--disable-blink-features=AutomationControlled"]
             )
             page = await browser.new_page()
-            await page.goto(config["url"], wait_until="domcontentloaded")
+            await page.goto(config["url"], timeout=60000)
+            await page.wait_for_selector(config["selector"], timeout=60000)
+            text = await page.locator(config["selector"]).inner_text()
 
-            locator = page.locator(config["selector"])
-            await locator.wait_for()
-            text = await locator.inner_text()
             print(f"[WU DEBUG] Captured text for {from_currency}->{to_currency}: {text}")
 
             match = re.search(r"([\d.]+)", text)
