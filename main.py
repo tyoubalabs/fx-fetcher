@@ -86,6 +86,11 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
 # --- Refresh endpoint ---
 @app.get("/refresh")
 async def refresh():
+    # Schedule the heavy scraping in background
+    asyncio.create_task(refresh_rates_once())
+    return {"status": "refresh scheduled"}
+
+async def refresh_rates_once():
     results = {}
     #results["MoneyGram"] = await fetch_moneygram_rate()
     for (from_cur, to_cur) in WU_CONFIG.keys():
@@ -93,7 +98,6 @@ async def refresh():
     with open(CACHE_FILE, "w") as f:
         json.dump({"timestamp": time.time(), "rates": results}, f)
     print("[CACHE UPDATED]")
-    return {"status": "cache updated", "rates": results}
 
 # --- Endpoints that read cache ---
 @app.get("/moneygram")
