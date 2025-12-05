@@ -2,6 +2,9 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from playwright.async_api import async_playwright
 import asyncio, re, json, time, os
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 app = FastAPI()
 app.add_middleware(
@@ -37,7 +40,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             # Extract numeric rate
             text = text.split("=")[1].strip() if "=" in text else text
             match = re.search(r"([\d.]+)", text)
-            print("[MG RATE ADDED]")
+            logging.info("[MG RATE ADDED]")
             await browser.close()
             return float(match.group(1)) if match else None
     except Exception as e:
@@ -97,7 +100,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
             await page.wait_for_selector(config["selector"], timeout=60000)
             text = await page.locator(config["selector"]).inner_text()
             match = re.search(r"([\d.]+)", text)
-            print("[WU RATE ADDED]")
+            logging.info("[WU RATE ADDED]")
             await browser.close()
             return float(match.group(1)) if match else None
     except Exception as e:
