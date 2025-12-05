@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from playwright.async_api import async_playwright
-import re, json, time, os
+import asyncio, re, json, time, os
 
 app = FastAPI()
 app.add_middleware(
