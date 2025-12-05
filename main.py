@@ -76,7 +76,7 @@ async def fetch_wu_rate(results, from_currency: str, to_currency: str):
     try:
         key = (from_currency.upper(), to_currency.upper())
         if key not in WU_CONFIG:
-            results["Western Union"] = None
+            results["Western_Union"] = None
             results["error"] = f"Unsupported currency pair {from_currency}->{to_currency}"
             return
 
@@ -96,13 +96,13 @@ async def fetch_wu_rate(results, from_currency: str, to_currency: str):
 
             match = re.search(r"([\d.]+)", text)
             if match:
-                results["Western Union"] = float(match.group(1))
+                results["Western_Union"] = float(match.group(1))
             else:
-                results["Western Union"] = None
+                results["Western_Union"] = None
 
             await browser.close()
     except Exception as e:
-        results["Western Union"] = None
+        results["Western_Union"] = None
         results["error"] = str(e)
 
 
