@@ -15,25 +15,34 @@ app.add_middleware(
 CACHE_FILE = "fx_rates.json"
 
 # --- MoneyGram scraper ---
-async def fetch_moneygram_rate() -> float | None:
+async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | None:
+    key = (from_currency.upper(), to_currency.upper())
+    if key not in MG_CONFIG:
+        return None
+    url = MG_CONFIG[key]
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
-            await page.goto("https://www.moneygram.com/ca/en/corridor/tunisia", wait_until="domcontentloaded")
-            await page.wait_for_selector(
+            await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+
+            # Try to locate the exchange rate span
+            locator = page.locator(
                 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
             )
-            text = await page.locator(
-                'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
-            ).inner_text()
-            text = text.split("=")[1].strip()
-            rate = re.search(r"([\d.]+)", text).group(1)
+            await locator.wait_for(timeout=60000)
+            text = await locator.inner_text()
+            print(f"[MG DEBUG] {from_currency}->{to_currency}: {text}")
+
+            # Extract numeric rate
+            text = text.split("=")[1].strip() if "=" in text else text
+            match = re.search(r"([\d.]+)", text)
             await browser.close()
-            return float(rate)
+            return float(match.group(1)) if match else None
     except Exception as e:
-        print("[MG ERROR]", e)
+        print(f"[MG ERROR] {from_currency}->{to_currency}: {e}")
         return None
+
 
 # --- Western Union config ---
 WU_CONFIG = {
@@ -62,6 +71,16 @@ WU_CONFIG = {
         "url": "https://www.westernunion.com/fr/en/send-money-to-morocco.html",
         "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
     },
+}
+
+#--- Moneygram config ---
+MG_CONFIG = {
+    ("CAD", "TND"): "https://www.moneygram.com/ca/en/corridor/tunisia",
+    ("CAD", "MAD"): "https://www.moneygram.com/ca/en/corridor/morocco",
+    ("USD", "MAD"): "https://www.moneygram.com/us/en/corridor/morocco",
+    ("USD", "TND"): "https://www.moneygram.com/us/en/corridor/tunisia",
+    ("EUR", "TND"): "https://www.moneygram.com/fr/en/corridor/tunisia",
+    ("EUR", "MAD"): "https://www.moneygram.com/fr/en/corridor/morocco",
 }
 
 async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
@@ -96,12 +115,18 @@ async def refresh():
 
 async def refresh_rates_once():
     results = {}
-    #results["MoneyGram"] = await fetch_moneygram_rate()
+    # MoneyGram pairs
+    for (from_cur, to_cur) in MG_CONFIG.keys():
+        results[f"MG_{from_cur}_{to_cur}"] = await fetch_moneygram_rate(from_cur, to_cur)
+
+    # Western Union pairs
     for (from_cur, to_cur) in WU_CONFIG.keys():
         results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
+
     with open(CACHE_FILE, "w") as f:
         json.dump({"timestamp": time.time(), "rates": results}, f)
     print("[CACHE UPDATED]")
+
 
 # --- Endpoints that read cache ---
 @app.get("/moneygram")
