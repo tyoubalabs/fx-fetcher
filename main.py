@@ -22,7 +22,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
     url = MG_CONFIG[key]
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            browser = await p.chromium.launch(headless=False)
             page = await browser.new_page()
             await page.goto(url, wait_until="domcontentloaded", timeout=60000)
 
@@ -37,6 +37,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             # Extract numeric rate
             text = text.split("=")[1].strip() if "=" in text else text
             match = re.search(r"([\d.]+)", text)
+            print("[MG RATE ADDED]")
             await browser.close()
             return float(match.group(1)) if match else None
     except Exception as e:
@@ -96,6 +97,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
             await page.wait_for_selector(config["selector"], timeout=60000)
             text = await page.locator(config["selector"]).inner_text()
             match = re.search(r"([\d.]+)", text)
+            print("[WU RATE ADDED]")
             await browser.close()
             return float(match.group(1)) if match else None
     except Exception as e:
@@ -126,7 +128,19 @@ async def refresh_rates_once():
     old_rates = old_cache.get("rates", {})
 
     results = {}
-
+    # --- Western Union pairs ---
+    for (from_cur, to_cur) in WU_CONFIG.keys():
+        try:
+            rate = await fetch_wu_rate(from_cur, to_cur)
+            if rate is not None:
+                results[f"WU_{from_cur}_{to_cur}"] = rate
+            else:
+                results[f"WU_{from_cur}_{to_cur}"] = old_rates.get(f"WU_{from_cur}_{to_cur}")
+                print(f"[WU ERROR] {from_cur}->{to_cur} scrape failed, kept old value {results[f'WU_{from_cur}_{to_cur}']}")
+        except Exception as e:
+            results[f"WU_{from_cur}_{to_cur}"] = old_rates.get(f"WU_{from_cur}_{to_cur}")
+            print(f"[WU EXCEPTION] {from_cur}->{to_cur}: {e}, kept old value {results[f'WU_{from_cur}_{to_cur}']}")
+            
     # --- MoneyGram pairs ---
     for (from_cur, to_cur) in MG_CONFIG.keys():
         try:
@@ -141,18 +155,7 @@ async def refresh_rates_once():
             results[f"MG_{from_cur}_{to_cur}"] = old_rates.get(f"MG_{from_cur}_{to_cur}")
             print(f"[MG EXCEPTION] {from_cur}->{to_cur}: {e}, kept old value {results[f'MG_{from_cur}_{to_cur}']}")
 
-    # --- Western Union pairs ---
-    for (from_cur, to_cur) in WU_CONFIG.keys():
-        try:
-            rate = await fetch_wu_rate(from_cur, to_cur)
-            if rate is not None:
-                results[f"WU_{from_cur}_{to_cur}"] = rate
-            else:
-                results[f"WU_{from_cur}_{to_cur}"] = old_rates.get(f"WU_{from_cur}_{to_cur}")
-                print(f"[WU ERROR] {from_cur}->{to_cur} scrape failed, kept old value {results[f'WU_{from_cur}_{to_cur}']}")
-        except Exception as e:
-            results[f"WU_{from_cur}_{to_cur}"] = old_rates.get(f"WU_{from_cur}_{to_cur}")
-            print(f"[WU EXCEPTION] {from_cur}->{to_cur}: {e}, kept old value {results[f'WU_{from_cur}_{to_cur}']}")
+
 
     # --- Write new cache ---
     new_cache = {"timestamp": time.time(), "rates": results}
