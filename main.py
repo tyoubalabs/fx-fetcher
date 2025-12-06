@@ -95,7 +95,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             await page.wait_for_selector(config["selector"], timeout=60000)
             text = await page.locator(config["selector"]).inner_text()
             logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {text}")
-			match = re.search(r"([\d.]+)", text)
+			text = re.search(r"([\d.]+)", text)
 			rate = float(match.group(1)) if match else None
             if rate is not None:
                 logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {rate}")
