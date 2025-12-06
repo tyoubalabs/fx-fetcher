@@ -82,7 +82,9 @@ WU_CONFIG = {
 async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | None:
     key = (from_currency.upper(), to_currency.upper())
     if key not in MG_CONFIG:
+        logging.error(f"[MG ERROR] Unsupported pair {from_currency}->{to_currency}")
         return None
+        
     config = MG_CONFIG[key]
     try:
         async with async_playwright() as p:
