@@ -100,7 +100,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {text}")
             
             text = text.split("=")[1].strip()
-            rate = re.search(r"([\d.]+)", text).group(1)
+            rate = re.search(r"([\d.,]+)", text).group(1)
             
             if rate is not None:
                 logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {rate}")
@@ -126,7 +126,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
             await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
             await page.wait_for_selector(config["selector"], timeout=60000)
             text = await page.locator(config["selector"]).inner_text()
-            match = re.search(r"([\d.]+)", text)
+            match = re.search(r"([\d.,]+)", text)
             await browser.close()
             logging.info("[Browser closed]")
             return float(match.group(1)) if match else None
