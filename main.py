@@ -20,18 +20,25 @@ app.add_middleware(
 CACHE_FILE = "fx_rates.json"
 
 # --- MoneyGram scraper ---
-async def fetch_moneygram_rate() -> float | None:
+async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | None:
+    key = (from_currency.upper(), to_currency.upper())
+    if key not in MG_CONFIG:
+        return None
+    config = MG_CONFIG[key]
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
-            await page.goto("https://www.moneygram.com/ca/en/corridor/tunisia", wait_until="domcontentloaded")
-            await page.wait_for_selector(
-                'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
-            )
-            text = await page.locator(
-                'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
-            ).inner_text()
+            await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
+            await page.wait_for_selector(config["selector"], timeout=60000)
+            text = await page.locator(config["selector"]).inner_text()
+            #await page.goto("https://www.moneygram.com/ca/en/corridor/tunisia", wait_until="domcontentloaded")
+            #await page.wait_for_selector(
+            #    'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+            #)
+            #text = await page.locator(
+            #    'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+            #).inner_text()
             text = text.split("=")[1].strip()
             rate = re.search(r"([\d.]+)", text).group(1)
             await browser.close()
@@ -39,6 +46,35 @@ async def fetch_moneygram_rate() -> float | None:
     except Exception as e:
         print("[MG ERROR]", e)
         return None
+
+# --- Moneygram config ---        
+MG_CONFIG = {
+    ("CAD", "TND"): {
+        "url": "https://www.moneygram.com/ca/en/corridor/tunisia",
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+    },
+    ("CAD", "MAD"): {
+        "url": "https://www.moneygram.com/ca/en/corridor/morocco",
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+    },
+    ("USD", "MAD"): {
+        "url": "https://www.moneygram.com/us/en/corridor/morocco",
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+    },
+    ("USD", "TND"): {
+        "url": "https://www.moneygram.com/us/en/corridor/tunisia",
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+    },
+    ("EUR", "TND"): {
+        "url": "https://www.moneygram.com/fr/en/corridor/tunisia",
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+    },
+    ("EUR", "MAD"): {
+        "url": "https://www.moneygram.com/fr/en/corridor/morocco",
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+    },
+}
+
 
 # --- Western Union config ---
 WU_CONFIG = {
@@ -94,9 +130,16 @@ async def refresh():
    while True: 
     results = {}
     #results["MoneyGram"] = await fetch_moneygram_rate()
+    for (from_cur, to_cur) in MG_CONFIG.keys():
+        results[f"MG_{from_cur}_{to_cur}"] = await fetch_moneygram_rate(from_cur, to_cur)
+        logging.info("[NEW MG RATE ADDED]")
+    #with open(CACHE_FILE, "w") as f:
+    #    json.dump({"timestamp": time.time(), "rates": results}, f)
+        
     for (from_cur, to_cur) in WU_CONFIG.keys():
         results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
         logging.info("[NEW WU RATE ADDED]")
+        
     with open(CACHE_FILE, "w") as f:
         json.dump({"timestamp": time.time(), "rates": results}, f)
     logging.info("[CACHE UPDATED]")
@@ -106,7 +149,7 @@ async def refresh():
 
 # --- Endpoints that read cache ---
 @app.get("/moneygram")
-async def moneygram():
+async def moneygram(from_currency: str = Query(...), to_currency: str = Query(...)):
     if not os.path.exists(CACHE_FILE):
         return {"MoneyGram": None, "error": "Cache not ready"}
     with open(CACHE_FILE, "r") as f:
