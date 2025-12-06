@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from playwright.async_api import async_playwright
+from playwright_stealth import stealth_sync
 import re, json, time, os
 import asyncio
 import logging
@@ -94,6 +95,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
                 args=["--disable-blink-features=AutomationControlled"]
             )
             page = await browser.new_page()
+            await stealth_sync(page)
             await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
             logging.info(f"[MG page opened] {key}")
             await page.wait_for_timeout(3000)  # wait 3 seconds
