@@ -32,13 +32,6 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
             await page.wait_for_selector(config["selector"], timeout=60000)
             text = await page.locator(config["selector"]).inner_text()
-            #await page.goto("https://www.moneygram.com/ca/en/corridor/tunisia", wait_until="domcontentloaded")
-            #await page.wait_for_selector(
-            #    'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
-            #)
-            #text = await page.locator(
-            #    'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
-            #).inner_text()
             text = text.split("=")[1].strip()
             rate = re.search(r"([\d.]+)", text).group(1)
             await browser.close()
@@ -125,16 +118,14 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
         return None
 
 # --- Refresh endpoint ---
-#@app.get("/refresh")
 async def refresh():
    while True: 
     results = {}
-    #results["MoneyGram"] = await fetch_moneygram_rate()
+
     for (from_cur, to_cur) in MG_CONFIG.keys():
         results[f"MG_{from_cur}_{to_cur}"] = await fetch_moneygram_rate(from_cur, to_cur)
         logging.info("[NEW MG RATE ADDED]")
-    #with open(CACHE_FILE, "w") as f:
-    #    json.dump({"timestamp": time.time(), "rates": results}, f)
+
         
     for (from_cur, to_cur) in WU_CONFIG.keys():
         results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
@@ -145,7 +136,7 @@ async def refresh():
     logging.info("[CACHE UPDATED]")
     # sleep 15 minutes
     await asyncio.sleep(900)
-    #return {"status": "cache updated", "rates": results}
+   
 
 # --- Endpoints that read cache ---
 @app.get("/moneygram")
@@ -154,7 +145,7 @@ async def moneygram(from_currency: str = Query(...), to_currency: str = Query(..
         return {"MoneyGram": None, "error": "Cache not ready"}
     with open(CACHE_FILE, "r") as f:
         cache = json.load(f)
-    return {"MoneyGram": cache["rates"].get("MoneyGram"), "cached_at": cache["timestamp"]}
+    return {"MoneyGram": cache["rates"].get(key), "cached_at": cache["timestamp"]}
 
 @app.get("/wu")
 async def wu(from_currency: str = Query(...), to_currency: str = Query(...)):
