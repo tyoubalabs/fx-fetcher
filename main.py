@@ -62,11 +62,11 @@ WU_CONFIG = {
 
     ("USD", "TND"): {
         "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-tnd-rate.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'  # adjust after inspecting
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'  
     },
     ("USD", "MAD"): {
         "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-mad-rate.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'  # adjust after inspecting
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'  
     },
     ("EUR", "TND"): {
         "url": "https://www.westernunion.com/fr/en/send-money-to-tunisia.html",
@@ -88,9 +88,10 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
     config = MG_CONFIG[key]
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            browser = await p.chromium.launch(headless=False)
             page = await browser.new_page()
             await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
+            logging.info(f"[MG page opened] {key}")
             await page.wait_for_timeout(3000)  # wait 3 seconds
             await page.wait_for_selector(config["selector"], timeout=60000)
             text = await page.locator(config["selector"]).inner_text()
@@ -126,7 +127,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
             await browser.close()
             return float(match.group(1)) if match else None
     except Exception as e:
-        print("[WU ERROR]", e)
+        logging.error(f"[WU EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
 
 # --- Refresh endpoint ---
