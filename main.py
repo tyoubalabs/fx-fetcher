@@ -88,12 +88,14 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
     config = MG_CONFIG[key]
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False)
+            browser = await p.chromium.launch(headless=False,
+                args=["--disable-blink-features=AutomationControlled"]
+            )
             page = await browser.new_page()
-            await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
+            await page.goto(config["url"], wait_until="domcontentloaded", timeout=10000)
             logging.info(f"[MG page opened] {key}")
             await page.wait_for_timeout(3000)  # wait 3 seconds
-            await page.wait_for_selector(config["selector"], timeout=60000)
+            await page.wait_for_selector(config["selector"], timeout=10000)
             text = await page.locator(config["selector"]).inner_text()
             logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {text}")
             
@@ -105,6 +107,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             else:
                 logging.error(f"[MG PARSE ERROR] Could not extract number from: {text}")
             await browser.close()
+            logging.info("[Browser closed]")
             return float(rate)
     except Exception as e:
         logging.error(f"[MG EXCEPTION] {from_currency}->{to_currency}: {e}")
@@ -120,11 +123,12 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
-            await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
-            await page.wait_for_selector(config["selector"], timeout=60000)
+            await page.goto(config["url"], wait_until="domcontentloaded", timeout=10000)
+            await page.wait_for_selector(config["selector"], timeout=10000)
             text = await page.locator(config["selector"]).inner_text()
             match = re.search(r"([\d.]+)", text)
             await browser.close()
+            logging.info("[Browser closed]")
             return float(match.group(1)) if match else None
     except Exception as e:
         logging.error(f"[WU EXCEPTION] {from_currency}->{to_currency}: {e}")
