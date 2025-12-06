@@ -24,27 +24,27 @@ CACHE_FILE = "fx_rates.json"
 MG_CONFIG = {
     ("CAD", "TND"): {
         "url": "https://www.moneygram.com/ca/en/corridor/tunisia",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("CAD", "MAD"): {
         "url": "https://www.moneygram.com/ca/en/corridor/morocco",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("USD", "MAD"): {
         "url": "https://www.moneygram.com/us/en/corridor/morocco",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("USD", "TND"): {
         "url": "https://www.moneygram.com/us/en/corridor/tunisia",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("EUR", "TND"): {
         "url": "https://www.moneygram.com/fr/en/corridor/tunisia",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("EUR", "MAD"): {
         "url": "https://www.moneygram.com/fr/en/corridor/morocco",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
 }
 
