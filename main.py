@@ -18,6 +18,8 @@ app.add_middleware(
 )
 
 CACHE_FILE = "fx_rates.json"
+TEMP_CACHE_FILE = "fx_rates.tmp.json"
+
 
 
 # --- Moneygram config ---        
@@ -100,7 +102,9 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {text}")
             
             text = text.split("=")[1].strip()
-            rate = re.search(r"([\d.,]+)", text).group(1)
+            raw_rate = re.search(r"([\d.,]+)", text).group(1)
+            normalized = raw_rate.replace(",", ".")
+            rate = float(normalized)
             
             if rate is not None:
                 logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {rate}")
@@ -147,10 +151,18 @@ async def refresh():
     for (from_cur, to_cur) in WU_CONFIG.keys():
         results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
         logging.info("[NEW WU RATE ADDED]")
+    
+    # --- Write to temp file first ---
+    new_cache = {"timestamp": time.time(), "rates": results}
+    with open(TEMP_CACHE_FILE, "w") as f:
+        json.dump(new_cache, f)
         
-    with open(CACHE_FILE, "w") as f:
-        json.dump({"timestamp": time.time(), "rates": results}, f)
+    # --- Atomically replace main cache file ---
+    os.replace(TEMP_CACHE_FILE, CACHE_FILE)
+
     logging.info("[CACHE UPDATED]")
+    logging.info("[CACHE CONTENT] %s", json.dumps(new_cache, indent=2))
+    
     # sleep 15 minutes
     await asyncio.sleep(900)
    
