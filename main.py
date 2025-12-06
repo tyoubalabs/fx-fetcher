@@ -89,8 +89,10 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
             await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
+            await page.wait_for_timeout(3000)  # wait 3 seconds
             await page.wait_for_selector(config["selector"], timeout=60000)
             text = await page.locator(config["selector"]).inner_text()
+            logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {text}")
             text = text.split("=")[1].strip()
             rate = re.search(r"([\d.]+)", text).group(1)
             await browser.close()
