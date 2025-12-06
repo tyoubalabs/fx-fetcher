@@ -185,8 +185,29 @@ async def refresh():
 
         await asyncio.sleep(900)  # sleep 15 minutes
 
-# --- Endpoints ---
+# --- Endpoints that read cache ---
 @app.get("/moneygram")
 async def moneygram(from_currency: str = Query(...), to_currency: str = Query(...)):
     if not os.path.exists(CACHE_FILE):
-        return {"MoneyGram": None,
+        return {"MoneyGram": None, "error": "Cache not ready"}
+    with open(CACHE_FILE, "r") as f:
+        cache = json.load(f)
+    key = f"MG_{from_currency.upper()}_{to_currency.upper()}"
+    return {"MoneyGram": cache["rates"].get(key), "cached_at": cache["timestamp"]}
+
+@app.get("/wu")
+async def wu(from_currency: str = Query(...), to_currency: str = Query(...)):
+    if not os.path.exists(CACHE_FILE):
+        return {"Western_Union": None, "error": "Cache not ready"}
+    with open(CACHE_FILE, "r") as f:
+        cache = json.load(f)
+    key = f"WU_{from_currency.upper()}_{to_currency.upper()}"
+    return {"Western_Union": cache["rates"].get(key), "cached_at": cache["timestamp"]}
+
+@app.get("/ping")
+def ping():
+    return {"status": "ok"}
+    
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(refresh())
