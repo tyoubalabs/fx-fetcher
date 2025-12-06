@@ -19,26 +19,6 @@ app.add_middleware(
 
 CACHE_FILE = "fx_rates.json"
 
-# --- MoneyGram scraper ---
-async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | None:
-    key = (from_currency.upper(), to_currency.upper())
-    if key not in MG_CONFIG:
-        return None
-    config = MG_CONFIG[key]
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
-            await page.wait_for_selector(config["selector"], timeout=60000)
-            text = await page.locator(config["selector"]).inner_text()
-            text = text.split("=")[1].strip()
-            rate = re.search(r"([\d.]+)", text).group(1)
-            await browser.close()
-            return float(rate)
-    except Exception as e:
-        print("[MG ERROR]", e)
-        return None
 
 # --- Moneygram config ---        
 MG_CONFIG = {
@@ -98,6 +78,28 @@ WU_CONFIG = {
     },
 }
 
+# --- MoneyGram scraper ---
+async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | None:
+    key = (from_currency.upper(), to_currency.upper())
+    if key not in MG_CONFIG:
+        return None
+    config = MG_CONFIG[key]
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
+            await page.wait_for_selector(config["selector"], timeout=60000)
+            text = await page.locator(config["selector"]).inner_text()
+            text = text.split("=")[1].strip()
+            rate = re.search(r"([\d.]+)", text).group(1)
+            await browser.close()
+            return float(rate)
+    except Exception as e:
+        print("[MG ERROR]", e)
+        return None
+
+# --- Western Union scraper ---        
 async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
     key = (from_currency.upper(), to_currency.upper())
     if key not in WU_CONFIG:
@@ -145,6 +147,7 @@ async def moneygram(from_currency: str = Query(...), to_currency: str = Query(..
         return {"MoneyGram": None, "error": "Cache not ready"}
     with open(CACHE_FILE, "r") as f:
         cache = json.load(f)
+    key = f"MG_{from_currency.upper()}_{to_currency.upper()}"
     return {"MoneyGram": cache["rates"].get(key), "cached_at": cache["timestamp"]}
 
 @app.get("/wu")
