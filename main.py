@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from playwright.async_api import async_playwright
-from playwright_stealth import stealth
 import re, json, time, os
 import asyncio
 import logging
@@ -19,8 +18,6 @@ app.add_middleware(
 )
 
 CACHE_FILE = "fx_rates.json"
-TEMP_CACHE_FILE = "fx_rates.tmp.json"
-
 
 
 # --- Moneygram config ---        
@@ -90,23 +87,20 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
         
     config = MG_CONFIG[key]
     try:
-        async with stealth().use_async(async_playwright()) as p:
+        async with async_playwright() as p:
             browser = await p.chromium.launch(headless=False,
                 args=["--disable-blink-features=AutomationControlled"]
             )
             page = await browser.new_page()
-            #await stealth_async(page) 
             await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
             logging.info(f"[MG page opened] {key}")
-            await page.wait_for_timeout(5000)  # wait 5 seconds
+            await page.wait_for_timeout(3000)  # wait 3 seconds
             await page.wait_for_selector(config["selector"], timeout=60000)
             text = await page.locator(config["selector"]).inner_text()
             logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {text}")
             
             text = text.split("=")[1].strip()
-            raw_rate = re.search(r"([\d.,]+)", text).group(1)
-            normalized = raw_rate.replace(",", ".")
-            rate = float(normalized)
+            rate = re.search(r"([\d.,]+)", text).group(1)
             
             if rate is not None:
                 logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {rate}")
@@ -153,18 +147,10 @@ async def refresh():
     for (from_cur, to_cur) in WU_CONFIG.keys():
         results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
         logging.info("[NEW WU RATE ADDED]")
-    
-    # --- Write to temp file first ---
-    new_cache = {"timestamp": time.time(), "rates": results}
-    with open(TEMP_CACHE_FILE, "w") as f:
-        json.dump(new_cache, f)
         
-    # --- Atomically replace main cache file ---
-    os.replace(TEMP_CACHE_FILE, CACHE_FILE)
-
+    with open(CACHE_FILE, "w") as f:
+        json.dump({"timestamp": time.time(), "rates": results}, f)
     logging.info("[CACHE UPDATED]")
-    logging.info("[CACHE CONTENT] %s", json.dumps(new_cache, indent=2))
-    
     # sleep 15 minutes
     await asyncio.sleep(900)
    
