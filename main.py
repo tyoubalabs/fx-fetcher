@@ -90,7 +90,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
         
     config = MG_CONFIG[key]
     try:
-        async with Stealth().use_async(async_playwright()) as p:
+        async with stealth().use_async(async_playwright()) as p:
             browser = await p.chromium.launch(headless=False,
                 args=["--disable-blink-features=AutomationControlled"]
             )
