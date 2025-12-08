@@ -31,6 +31,14 @@ MG_CONFIG = {
         "url": "https://www.moneygram.com/ca/en/corridor/morocco",
         "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
+    ("CAD", "MXN"): {
+        "url": "https://www.moneygram.com/ca/en/corridor/mexico",
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+    }, 
+    ("CAD", "COP"): {
+        "url": "https://www.moneygram.com/ca/en/corridor/colombia",
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+    },    
     ("USD", "MAD"): {
         "url": "https://www.moneygram.com/us/en/corridor/morocco",
         "selector": 'xpath=(//span[contains(text(),"=")])[1]'
@@ -39,6 +47,14 @@ MG_CONFIG = {
         "url": "https://www.moneygram.com/us/en/corridor/tunisia",
         "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
+    ("USD", "COP"): {
+        "url": "https://www.moneygram.com/us/en/corridor/colombia",
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+    },
+    ("USD", "MXN"): {
+        "url": "https://www.moneygram.com/us/en/corridor/mexico",
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+    },    
     ("EUR", "TND"): {
         "url": "https://www.moneygram.com/fr/en/corridor/tunisia",
         "selector": 'xpath=(//span[contains(text(),"=")])[1]'
@@ -47,6 +63,14 @@ MG_CONFIG = {
         "url": "https://www.moneygram.com/fr/en/corridor/morocco",
         "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
+    ("EUR", "MXN"): {
+        "url": "https://www.moneygram.com/fr/en/corridor/mexico",
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+    },
+    ("EUR", "COP"): {
+        "url": "https://www.moneygram.com/fr/en/corridor/colombia",
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+    },      
 }
 
 
@@ -77,6 +101,30 @@ WU_CONFIG = {
         "url": "https://www.westernunion.com/fr/en/send-money-to-morocco.html",
         "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
     },
+    ("CAD", "COP"): {
+        "url": "https://www.westernunion.com/ca/en/send-money-to-colombia.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },  
+    ("EUR", "COP"): {
+        "url": "https://www.westernunion.com/fr/en/send-money-to-colombia.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("USD", "COP"): {
+        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-cop-rate.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'
+    },
+    ("EUR", "MXN"): {
+        "url": "https://www.westernunion.com/fr/en/send-money-to-mexico.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("CAD", "MXN"): {
+        "url": "https://www.westernunion.com/ca/fr/send-money-to-mexico.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },  
+    ("USD", "MXN"): {
+        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-mxn-rate.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'
+    },     
 }
 
 # --- MoneyGram scraper ---
