@@ -119,7 +119,7 @@ WU_CONFIG = {
     },
     ("CAD", "MXN"): {
         "url": "https://www.westernunion.com/ca/fr/send-money-to-mexico.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/strong/span'
     },  
     ("USD", "MXN"): {
         "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-mxn-rate.html",
@@ -157,7 +157,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
                 logging.error(f"[MG PARSE ERROR] Could not extract number from: {text}")
             await browser.close()
             logging.info("[Browser closed]")
-            return float(rate)
+            return rate
     except Exception as e:
         logging.error(f"[MG EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
@@ -178,7 +178,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
             match = re.search(r"([\d.,]+)", text)
             await browser.close()
             logging.info("[Browser closed]")
-            return float(match.group(1)) if match else None
+            return match.group(1) if match else None
     except Exception as e:
         logging.error(f"[WU EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
