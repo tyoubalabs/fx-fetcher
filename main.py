@@ -151,6 +151,8 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             text = text.split("=")[1].strip()
             rate = re.search(r"([\d.,]+)", text).group(1)
             rate = rate.replace(",", ".")
+            if rate.count(".") >= 2:
+                rate.replace(".", "", 1)
             if rate is not None:
                 logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {rate}")
             else:
