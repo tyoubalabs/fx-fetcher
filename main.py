@@ -187,7 +187,7 @@ async def refresh():
    while True: 
     results = {}
 
-    for (from_cur, to_cur) in MG_CONFIG.keys():
+    for (from_cur, to_cur) in MONEYGRAM_CONFIG.keys():
         results[f"MG_{from_cur}_{to_cur}"] = await fetch_moneygram_rate(from_cur, to_cur)
         logging.info("[NEW MG RATE ADDED]")
         results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
