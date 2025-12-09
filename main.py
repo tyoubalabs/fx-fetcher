@@ -23,7 +23,7 @@ app.add_middleware(
 
 CACHE_FILE = "fx_rates.json"
 TEMP_CACHE_FILE = "tmp_fx_rates.json"
-
+SESSION_FILE = "moneygram_session.json"
 
 # --- Moneygram config ---        
 MONEYGRAM_CONFIG = {
@@ -138,7 +138,9 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
-            page = await browser.new_page()
+            # Reuse cookies/local storage
+            context = await browser.new_context(storage_state=SESSION_FILE if os.path.exists(SESSION_FILE) else None)
+            page = await context.new_page()
 
             await page.goto(url, wait_until="domcontentloaded")
             await page.wait_for_timeout(2000)  # wait 2 seconds
@@ -146,6 +148,8 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             # Extract JSON text from <pre>
             raw_text = await page.inner_text("pre")
             data = json.loads(raw_text)
+            # Save session state for next run
+            await context.storage_state(path=SESSION_FILE)
             logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {raw_text}")
             # Try to extract fxRate for whichever receive currency is present
             fee_quotes = data.get("feeQuotesByCurrency", {})
