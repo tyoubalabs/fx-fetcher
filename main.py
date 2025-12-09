@@ -25,39 +25,39 @@ TEMP_CACHE_FILE = "tmp_fx_rates.json"
 MG_CONFIG = {
     ("CAD", "TND"): {
         "url": "https://www.moneygram.com/ca/en/corridor/tunisia",
-        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
     },
     ("CAD", "MAD"): {
         "url": "https://www.moneygram.com/ca/en/corridor/morocco",
-        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
     },
     ("CAD", "MXN"): {
         "url": "https://www.moneygram.com/ca/en/corridor/mexico",
-        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
     },   
     ("USD", "MAD"): {
         "url": "https://www.moneygram.com/us/en/corridor/morocco",
-        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
     },
     ("USD", "TND"): {
         "url": "https://www.moneygram.com/us/en/corridor/tunisia",
-        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
     },
     ("USD", "MXN"): {
         "url": "https://www.moneygram.com/us/en/corridor/mexico",
-        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
     },    
     ("EUR", "TND"): {
         "url": "https://www.moneygram.com/fr/en/corridor/tunisia",
-        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
     },
     ("EUR", "MAD"): {
         "url": "https://www.moneygram.com/fr/en/corridor/morocco",
-        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
     },
     ("EUR", "MXN"): {
         "url": "https://www.moneygram.com/fr/en/corridor/mexico",
-        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
+        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
     },     
 }
 
