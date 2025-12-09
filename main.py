@@ -4,6 +4,10 @@ from playwright.async_api import async_playwright
 import re, json, time, os
 import asyncio
 import logging
+import urllib.request
+import json
+import webbrowser
+from urllib.parse import urlencode
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -22,43 +26,61 @@ TEMP_CACHE_FILE = "tmp_fx_rates.json"
 
 
 # --- Moneygram config ---        
-MG_CONFIG = {
+MONEYGRAM_CONFIG = {
     ("CAD", "TND"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/tunisia",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "senderCountryCode": "CAN",
+        "senderCurrencyCode": "CAD",
+        "receiverCountryCode": "TUN",
+        "sendAmount": "100"
     },
     ("CAD", "MAD"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/morocco",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "senderCountryCode": "CAN",
+        "senderCurrencyCode": "CAD",
+        "receiverCountryCode": "MAR",
+        "sendAmount": "100"
     },
     ("CAD", "MXN"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/mexico",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
-    },   
-    ("USD", "MAD"): {
-        "url": "https://www.moneygram.com/us/en/corridor/morocco",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "senderCountryCode": "CAN",
+        "senderCurrencyCode": "CAD",
+        "receiverCountryCode": "MEX",
+        "sendAmount": "100"
     },
     ("USD", "TND"): {
-        "url": "https://www.moneygram.com/us/en/corridor/tunisia",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
-    },
+        "senderCountryCode": "USA",
+        "senderCurrencyCode": "USD",
+        "receiverCountryCode": "TUN",
+        "sendAmount": "250"
+    },     
     ("USD", "MXN"): {
-        "url": "https://www.moneygram.com/us/en/corridor/mexico",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
-    },    
-    ("EUR", "TND"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/tunisia",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
-    },
+        "senderCountryCode": "USA",
+        "senderCurrencyCode": "USD",
+        "receiverCountryCode": "MEX",
+        "sendAmount": "250"
+    },  
+    ("USD", "MAD"): {
+        "senderCountryCode": "USA",
+        "senderCurrencyCode": "USD",
+        "receiverCountryCode": "MAR",
+        "sendAmount": "100"
+    }, 
     ("EUR", "MAD"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/morocco",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "senderCountryCode": "FRA",
+        "senderCurrencyCode": "EUR",
+        "receiverCountryCode": "MAR",
+        "sendAmount": "100"
+    }, 
+    ("EUR", "TND"): {
+        "senderCountryCode": "FRA",
+        "senderCurrencyCode": "EUR",
+        "receiverCountryCode": "TUN",
+        "sendAmount": "100"
     },
     ("EUR", "MXN"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/mexico",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
-    },     
+        "senderCountryCode": "FRA",
+        "senderCurrencyCode": "EUR",
+        "receiverCountryCode": "MEX",
+        "sendAmount": "100"
+    },    
 }
 
 
@@ -105,36 +127,36 @@ WU_CONFIG = {
 
 # --- MoneyGram scraper ---
 async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | None:
-    key = (from_currency.upper(), to_currency.upper())
-    if key not in MG_CONFIG:
-        logging.error(f"[MG ERROR] Unsupported pair {from_currency}->{to_currency}")
-        return None
-        
-    config = MG_CONFIG[key]
+    # Look up parameters from config
+    params = MONEYGRAM_CONFIG.get((from_currency, to_currency))
+    if not params:
+        raise ValueError(f"No config found for {from_currency}->{to_currency}")
+
+    # Build query string dynamically
+    query = urlencode(params)
+    url = f"https://www.moneygram.com/api/send-money/fee-quote/v2?{query}"
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False,
-                args=["--disable-blink-features=AutomationControlled"]
-            )
+            browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
             page = await browser.new_page()
-            await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
-            logging.info(f"[MG page opened] {key}")
-            await page.wait_for_timeout(5000)  # wait 5 seconds
-            await page.wait_for_selector(config["selector"], timeout=60000)
-            text = await page.locator(config["selector"]).inner_text()
-            logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {text}")
-            
-            text = text.split("=")[1].strip()
-            rate = re.search(r"([\d.,]+)", text).group(1)
-            rate = rate.replace(",", ".")
 
-            if rate is not None:
-                logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {rate}")
-            else:
-                logging.error(f"[MG PARSE ERROR] Could not extract number from: {text}")
+            await page.goto(url, wait_until="domcontentloaded")
+            await page.wait_for_timeout(2000)  # wait 2 seconds
+
+            # Extract JSON text from <pre>
+            raw_text = await page.inner_text("pre")
+            data = json.loads(raw_text)
+
+            # Try to extract fxRate for whichever receive currency is present
+            fee_quotes = data.get("feeQuotesByCurrency", {})
+            fx_rate = None
+            if fee_quotes:
+                # Grab the first currency’s fxRate
+                first_currency = next(iter(fee_quotes))
+                fx_rate = fee_quotes[first_currency].get("fxRate")
+
             await browser.close()
-            logging.info("[Browser closed]")
-            return rate
+            return fx_rate
     except Exception as e:
         logging.error(f"[MG EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
@@ -166,15 +188,11 @@ async def refresh():
     results = {}
 
     for (from_cur, to_cur) in MG_CONFIG.keys():
-        #results[f"MG_{from_cur}_{to_cur}"] = await fetch_moneygram_rate(from_cur, to_cur)
-        #logging.info("[NEW MG RATE ADDED]")
+        results[f"MG_{from_cur}_{to_cur}"] = await fetch_moneygram_rate(from_cur, to_cur)
+        logging.info("[NEW MG RATE ADDED]")
         results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
         logging.info("[NEW WU RATE ADDED]")
 
-        
-    #for (from_cur, to_cur) in WU_CONFIG.keys():
-    #    results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
-    #    logging.info("[NEW WU RATE ADDED]")
         
     # --- Write to temp file first ---
     new_cache = {"timestamp": time.time(), "rates": results}
