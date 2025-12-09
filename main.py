@@ -31,55 +31,55 @@ MONEYGRAM_CONFIG = {
         "senderCountryCode": "CAN",
         "senderCurrencyCode": "CAD",
         "receiverCountryCode": "TUN",
-        "sendAmount": "100"
+        "sendAmount": "100.00"
     },
     ("CAD", "MAD"): {
         "senderCountryCode": "CAN",
         "senderCurrencyCode": "CAD",
         "receiverCountryCode": "MAR",
-        "sendAmount": "100"
+        "sendAmount": "100.00"
     },
     ("CAD", "MXN"): {
         "senderCountryCode": "CAN",
         "senderCurrencyCode": "CAD",
         "receiverCountryCode": "MEX",
-        "sendAmount": "100"
+        "sendAmount": "100.00"
     },
     ("USD", "TND"): {
         "senderCountryCode": "USA",
         "senderCurrencyCode": "USD",
         "receiverCountryCode": "TUN",
-        "sendAmount": "250"
+        "sendAmount": "100.00"
     },     
     ("USD", "MXN"): {
         "senderCountryCode": "USA",
         "senderCurrencyCode": "USD",
         "receiverCountryCode": "MEX",
-        "sendAmount": "250"
+        "sendAmount": "100.00"
     },  
     ("USD", "MAD"): {
         "senderCountryCode": "USA",
         "senderCurrencyCode": "USD",
         "receiverCountryCode": "MAR",
-        "sendAmount": "100"
+        "sendAmount": "100.00"
     }, 
     ("EUR", "MAD"): {
         "senderCountryCode": "FRA",
         "senderCurrencyCode": "EUR",
         "receiverCountryCode": "MAR",
-        "sendAmount": "100"
+        "sendAmount": "100.00"
     }, 
     ("EUR", "TND"): {
         "senderCountryCode": "FRA",
         "senderCurrencyCode": "EUR",
         "receiverCountryCode": "TUN",
-        "sendAmount": "100"
+        "sendAmount": "100.00"
     },
     ("EUR", "MXN"): {
         "senderCountryCode": "FRA",
         "senderCurrencyCode": "EUR",
         "receiverCountryCode": "MEX",
-        "sendAmount": "100"
+        "sendAmount": "100.00"
     },    
 }
 
@@ -146,7 +146,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             # Extract JSON text from <pre>
             raw_text = await page.inner_text("pre")
             data = json.loads(raw_text)
-
+            logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {raw_text}")
             # Try to extract fxRate for whichever receive currency is present
             fee_quotes = data.get("feeQuotesByCurrency", {})
             fx_rate = None
