@@ -34,21 +34,13 @@ MG_CONFIG = {
     ("CAD", "MXN"): {
         "url": "https://www.moneygram.com/ca/en/corridor/mexico",
         "selector": 'xpath=(//span[contains(text(),"=")])[1]'
-    }, 
-    ("CAD", "COP"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/colombia",
-        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
-    },    
+    },   
     ("USD", "MAD"): {
         "url": "https://www.moneygram.com/us/en/corridor/morocco",
         "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("USD", "TND"): {
         "url": "https://www.moneygram.com/us/en/corridor/tunisia",
-        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
-    },
-    ("USD", "COP"): {
-        "url": "https://www.moneygram.com/us/en/corridor/colombia",
         "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("USD", "MXN"): {
@@ -66,11 +58,7 @@ MG_CONFIG = {
     ("EUR", "MXN"): {
         "url": "https://www.moneygram.com/fr/en/corridor/mexico",
         "selector": 'xpath=(//span[contains(text(),"=")])[1]'
-    },
-    ("EUR", "COP"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/colombia",
-        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
-    },      
+    },     
 }
 
 
@@ -100,18 +88,6 @@ WU_CONFIG = {
     ("EUR", "MAD"): {
         "url": "https://www.westernunion.com/fr/en/send-money-to-morocco.html",
         "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
-    },
-    ("CAD", "COP"): {
-        "url": "https://www.westernunion.com/ca/en/send-money-to-colombia.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
-    },  
-    ("EUR", "COP"): {
-        "url": "https://www.westernunion.com/fr/en/send-money-to-colombia.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
-    },
-    ("USD", "COP"): {
-        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-cop-rate.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'
     },
     ("EUR", "MXN"): {
         "url": "https://www.westernunion.com/fr/en/send-money-to-mexico.html",
@@ -151,8 +127,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             text = text.split("=")[1].strip()
             rate = re.search(r"([\d.,]+)", text).group(1)
             rate = rate.replace(",", ".")
-            if rate.count(".") >= 2:
-                rate.replace(".", "", 1)
+
             if rate is not None:
                 logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {rate}")
             else:
