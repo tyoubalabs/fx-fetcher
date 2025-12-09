@@ -25,39 +25,39 @@ TEMP_CACHE_FILE = "tmp_fx_rates.json"
 MG_CONFIG = {
     ("CAD", "TND"): {
         "url": "https://www.moneygram.com/ca/en/corridor/tunisia",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("CAD", "MAD"): {
         "url": "https://www.moneygram.com/ca/en/corridor/morocco",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("CAD", "MXN"): {
         "url": "https://www.moneygram.com/ca/en/corridor/mexico",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },   
     ("USD", "MAD"): {
         "url": "https://www.moneygram.com/us/en/corridor/morocco",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("USD", "TND"): {
         "url": "https://www.moneygram.com/us/en/corridor/tunisia",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("USD", "MXN"): {
         "url": "https://www.moneygram.com/us/en/corridor/mexico",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },    
     ("EUR", "TND"): {
         "url": "https://www.moneygram.com/fr/en/corridor/tunisia",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("EUR", "MAD"): {
         "url": "https://www.moneygram.com/fr/en/corridor/morocco",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },
     ("EUR", "MXN"): {
         "url": "https://www.moneygram.com/fr/en/corridor/mexico",
-        "selector": 'xpath=//*[@id="main"]/div[1]/div/div/div/div[2]/div/form/div[1]/div[2]/div[1]/div[2]/span[2]'
+        "selector": 'xpath=(//span[contains(text(),"=")])[1]'
     },     
 }
 
@@ -119,7 +119,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             page = await browser.new_page()
             await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
             logging.info(f"[MG page opened] {key}")
-            await page.wait_for_timeout(10000)  # wait 10 seconds
+            await page.wait_for_timeout(5000)  # wait 5 seconds
             await page.wait_for_selector(config["selector"], timeout=60000)
             text = await page.locator(config["selector"]).inner_text()
             logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {text}")
@@ -168,11 +168,13 @@ async def refresh():
     for (from_cur, to_cur) in MG_CONFIG.keys():
         results[f"MG_{from_cur}_{to_cur}"] = await fetch_moneygram_rate(from_cur, to_cur)
         logging.info("[NEW MG RATE ADDED]")
-
-        
-    for (from_cur, to_cur) in WU_CONFIG.keys():
         results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
         logging.info("[NEW WU RATE ADDED]")
+
+        
+    #for (from_cur, to_cur) in WU_CONFIG.keys():
+    #    results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
+    #    logging.info("[NEW WU RATE ADDED]")
         
     # --- Write to temp file first ---
     new_cache = {"timestamp": time.time(), "rates": results}
