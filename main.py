@@ -25,6 +25,26 @@ CACHE_FILE = "fx_rates.json"
 TEMP_CACHE_FILE = "tmp_fx_rates.json"
 SESSION_FILE = "moneygram_session.json"
 
+# --- Lemfi config ---        
+LEMFI_CONFIG = {
+    ("CAD", "TND"): {
+        "url": "https://lemfi.com/en-ca/international-money-transfer/tunisia",
+        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]'
+    },
+    ("CAD", "MAD"): {
+        "url": "https://lemfi.com/en-ca/international-money-transfer/morocco",
+        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]'
+    },
+    ("EUR", "TND"): {
+        "url": "https://lemfi.com/en-fr/international-money-transfer/tunisia",
+        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]'
+    },
+    ("EUR", "MAD"): {
+        "url": "https://lemfi.com/en-fr/international-money-transfer/morocco",
+        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]'
+    },
+}
+    
 # --- Moneygram config ---        
 MONEYGRAM_CONFIG = {
     ("CAD", "TND"): {
@@ -185,7 +205,33 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
     except Exception as e:
         logging.error(f"[WU EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
-
+        
+# --- Lemfi scraper ---
+async def fetch_Lemfi_rate(from_currency: str, to_currency: str) -> float | None:
+    key = (from_currency.upper(), to_currency.upper())
+    if key not in LEMFI_CONFIG:
+        logging.error(f"[LemFi ERROR] Unsupported pair {from_currency}->{to_currency}")
+        return None
+        
+    config = LEMFI_CONFIG[key]
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
+            await page.wait_for_timeout(3000)  # wait 3 seconds
+            await page.wait_for_selector(config["selector"], timeout=60000)
+            text = await page.locator(config["selector"]).inner_text()
+            text = text.split("=")[1].strip()
+            logging.info(f"[LemFi RAW TEXT] {from_currency}->{to_currency}: {text}")
+			match = re.search(r"([\d.]+)", text)
+			rate = float(match.group(1)) if match else None
+            await browser.close()
+            return float(rate)
+    except Exception as e:
+        logging.error(f"[LemFi EXCEPTION] {from_currency}->{to_currency}: {e}")
+        return None
+        
 # --- Refresh endpoint ---
 async def refresh():
    while True: 
@@ -196,7 +242,8 @@ async def refresh():
         logging.info("[NEW MG RATE ADDED]")
         results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
         logging.info("[NEW WU RATE ADDED]")
-
+        results[f"LEMFI_{from_cur}_{to_cur}"] = await fetch_lemfi_rate(from_cur, to_cur)
+        logging.info("[NEW LEMFI RATE ADDED]")
         
     # --- Write to temp file first ---
     new_cache = {"timestamp": time.time(), "rates": results}
@@ -229,6 +276,15 @@ async def wu(from_currency: str = Query(...), to_currency: str = Query(...)):
         cache = json.load(f)
     key = f"WU_{from_currency.upper()}_{to_currency.upper()}"
     return {"Western_Union": cache["rates"].get(key), "cached_at": cache["timestamp"]}
+    
+@app.get("/lemfi")
+async def wu(from_currency: str = Query(...), to_currency: str = Query(...)):
+    if not os.path.exists(CACHE_FILE):
+        return {"Lemfi": None, "error": "Cache not ready"}
+    with open(CACHE_FILE, "r") as f:
+        cache = json.load(f)
+    key = f"LEMFI_{from_currency.upper()}_{to_currency.upper()}"
+    return {"Lemfi": cache["rates"].get(key), "cached_at": cache["timestamp"]}    
 
 @app.get("/ping")
 def ping():
