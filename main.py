@@ -216,11 +216,11 @@ async def fetch_lemfi_rate(from_currency: str, to_currency: str) -> float | None
     config = LEMFI_CONFIG[key]
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
             page = await browser.new_page()
-            await page.goto(config["url"], wait_until="domcontentloaded", timeout=5000)
+            await page.goto(config["url"], wait_until="domcontentloaded", timeout=10000)
             await page.wait_for_timeout(3000)  # wait 3 seconds
-            await page.wait_for_selector(config["selector"], timeout=5000)
+            await page.wait_for_selector(config["selector"], timeout=10000)
             text = await page.locator(config["selector"]).inner_text()
             text = text.split("=")[1].strip()
             rate = re.search(r"([\d.,]+)", text).group(1)
