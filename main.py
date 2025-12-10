@@ -207,7 +207,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
         return None
         
 # --- Lemfi scraper ---
-async def fetch_Lemfi_rate(from_currency: str, to_currency: str) -> float | None:
+async def fetch_lemfi_rate(from_currency: str, to_currency: str) -> float | None:
     key = (from_currency.upper(), to_currency.upper())
     if key not in LEMFI_CONFIG:
         logging.error(f"[LemFi ERROR] Unsupported pair {from_currency}->{to_currency}")
@@ -218,9 +218,9 @@ async def fetch_Lemfi_rate(from_currency: str, to_currency: str) -> float | None
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
-            await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
+            await page.goto(config["url"], wait_until="domcontentloaded", timeout=5000)
             await page.wait_for_timeout(3000)  # wait 3 seconds
-            await page.wait_for_selector(config["selector"], timeout=60000)
+            await page.wait_for_selector(config["selector"], timeout=5000)
             text = await page.locator(config["selector"]).inner_text()
             text = text.split("=")[1].strip()
             rate = re.search(r"([\d.,]+)", text).group(1)
