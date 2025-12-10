@@ -223,10 +223,9 @@ async def fetch_Lemfi_rate(from_currency: str, to_currency: str) -> float | None
             await page.wait_for_selector(config["selector"], timeout=60000)
             text = await page.locator(config["selector"]).inner_text()
             text = text.split("=")[1].strip()
-            match = re.search(r"([\d.,]+)", text)
+            rate = re.search(r"([\d.,]+)", text).group(1)
             logging.info(f"[LemFi RAW TEXT] {from_currency}->{to_currency}: {text}")
 			
-			rate = match.group(1) if match else None
             await browser.close()
             return rate
     except Exception as e:
