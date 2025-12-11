@@ -163,6 +163,7 @@ async def fetch_myeasytransfer_rate(from_currency: str, to_currency: str) -> flo
     params = MYEASYTRANSFER_CONFIG.get((from_currency.upper(), to_currency.upper()))
     if not params:
         raise ValueError(f"No config found for {from_currency}->{to_currency}")
+        return None
 
     query = urlencode(params)
     url = f"https://www.api.myeasytransfer.com/v1/fxrates/fxrate?{query}"
@@ -191,6 +192,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
     params = MONEYGRAM_CONFIG.get((from_currency, to_currency))
     if not params:
         raise ValueError(f"No config found for {from_currency}->{to_currency}")
+        return None
 
     # Build query string dynamically
     query = urlencode(params)
