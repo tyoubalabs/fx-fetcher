@@ -145,6 +145,46 @@ WU_CONFIG = {
     },     
 }
 
+# --- MyEasyTransfer config ---
+MYEASYTRANSFER_CONFIG = {
+    ("EUR", "TND"): {
+        "departureCurrencyId": "623d820a0b5a9d374d8becab",   # example EUR
+        "destinationCurrencyId": "65f4a7651529e3e101439541"  # example TND
+    },
+    ("EUR", "MAD"): {
+        "departureCurrencyId": "623d820a0b5a9d374d8becab",   # EUR
+        "destinationCurrencyId": "617aa96c6f86345324eb252f"  # MAD 
+    },    
+   
+}
+
+# --- MyEasyTransfer scraper ---
+async def fetch_myeasytransfer_rate(from_currency: str, to_currency: str) -> float | None:
+    params = MYEASYTRANSFER_CONFIG.get((from_currency.upper(), to_currency.upper()))
+    if not params:
+        raise ValueError(f"No config found for {from_currency}->{to_currency}")
+
+    query = urlencode(params)
+    url = f"https://www.api.myeasytransfer.com/v1/fxrates/fxrate?{query}"
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
+            page = await browser.new_page()
+            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            await page.wait_for_timeout(2000)
+
+            raw_text = await page.inner_text("pre")
+            data = json.loads(raw_text)
+            logging.info(f"[MyEasyTransfer RAW TEXT] {from_currency}->{to_currency}: {raw_text}")
+
+            # Assuming API returns {"fxRate": <value>} or similar
+            fx_rate = data.get("fxRate")
+            await browser.close()
+            return fx_rate
+    except Exception as e:
+        logging.error(f"[MyEasyTransfer EXCEPTION] {from_currency}->{to_currency}: {e}")
+        return None
+
 # --- MoneyGram scraper ---
 async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | None:
     # Look up parameters from config
@@ -244,6 +284,9 @@ async def refresh():
         logging.info("[NEW WU RATE ADDED]")
         results[f"LEMFI_{from_cur}_{to_cur}"] = await fetch_lemfi_rate(from_cur, to_cur)
         logging.info("[NEW LEMFI RATE ADDED]")
+        results[f"MET_{from_cur}_{to_cur}"] = await fetch_myeasytransfer_rate(from_cur, to_cur)
+        logging.info("[NEW EASYTR RATE ADDED]")
+
         
     # --- Write to temp file first ---
     new_cache = {"timestamp": time.time(), "rates": results}
@@ -285,6 +328,15 @@ async def wu(from_currency: str = Query(...), to_currency: str = Query(...)):
         cache = json.load(f)
     key = f"LEMFI_{from_currency.upper()}_{to_currency.upper()}"
     return {"Lemfi": cache["rates"].get(key), "cached_at": cache["timestamp"]}    
+
+@app.get("/myeasytransfer")
+async def myeasytransfer(from_currency: str = Query(...), to_currency: str = Query(...)):
+    if not os.path.exists(CACHE_FILE):
+        return {"MyEasyTransfer": None, "error": "Cache not ready"}
+    with open(CACHE_FILE, "r") as f:
+        cache = json.load(f)
+    key = f"MET_{from_currency.upper()}_{to_currency.upper()}"
+    return {"MyEasyTransfer": cache["rates"].get(key), "cached_at": cache["timestamp"]}
 
 @app.get("/ping")
 def ping():
