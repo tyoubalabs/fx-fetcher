@@ -160,16 +160,17 @@ MYEASYTRANSFER_CONFIG = {
 
 # --- MyEasyTransfer scraper ---
 async def fetch_myeasytransfer_rate(from_currency: str, to_currency: str) -> float | None:
-    key = (from_currency.upper(), to_currency.upper())
-    if key not in MYEASYTRANSFER_CONFIG:
+    params = MYEASYTRANSFER_CONFIG.get((from_currency, to_currency))
+    if not params:
         logging.error(f"[EASYTR ERROR] Unsupported pair {from_currency}->{to_currency}")
         return None
 
-    query = urlencode(key)
+    query = urlencode(params)
     url = f"https://www.api.myeasytransfer.com/v1/fxrates/fxrate?{query}"
+    logging.debug(f"[EASYTR] url: {url}")
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
+            browser = await p.chromium.launch(headless=False, args=["--disable-blink-features=AutomationControlled"])
             page = await browser.new_page()
             await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             await page.wait_for_timeout(2000)
@@ -177,11 +178,9 @@ async def fetch_myeasytransfer_rate(from_currency: str, to_currency: str) -> flo
             raw_text = await page.inner_text("pre")
             data = json.loads(raw_text)
             logging.info(f"[MyEasyTransfer RAW TEXT] {from_currency}->{to_currency}: {raw_text}")
-
-            # Assuming API returns {"fxRate": <value>} or similar
-            fx_rate = data.get("fxRateBank")
+            fx_rate_bank = data["fxRate"]["fxRateBank"]
             await browser.close()
-            return fx_rate
+            return fx_rate_bank
     except Exception as e:
         logging.error(f"[MyEasyTransfer EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
