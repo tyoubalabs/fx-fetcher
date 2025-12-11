@@ -178,7 +178,7 @@ async def fetch_myeasytransfer_rate(from_currency: str, to_currency: str) -> flo
             logging.info(f"[MyEasyTransfer RAW TEXT] {from_currency}->{to_currency}: {raw_text}")
 
             # Assuming API returns {"fxRate": <value>} or similar
-            fx_rate = data.get("fxRate")
+            fx_rate = data.get("fxRateBank")
             await browser.close()
             return fx_rate
     except Exception as e:
