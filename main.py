@@ -160,12 +160,12 @@ MYEASYTRANSFER_CONFIG = {
 
 # --- MyEasyTransfer scraper ---
 async def fetch_myeasytransfer_rate(from_currency: str, to_currency: str) -> float | None:
-    params = MYEASYTRANSFER_CONFIG.get((from_currency.upper(), to_currency.upper()))
-    if not params:
-        raise ValueError(f"No config found for {from_currency}->{to_currency}")
+    key = (from_currency.upper(), to_currency.upper())
+    if key not in MYEASYTRANSFER_CONFIG:
+        logging.error(f"[EASYTR ERROR] Unsupported pair {from_currency}->{to_currency}")
         return None
 
-    query = urlencode(params)
+    query = urlencode(key)
     url = f"https://www.api.myeasytransfer.com/v1/fxrates/fxrate?{query}"
     try:
         async with async_playwright() as p:
