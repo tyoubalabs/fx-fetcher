@@ -131,6 +131,42 @@ MONEYGRAM_CONFIG = {
         "receiverCountryCode": "IND",
         "sendAmount": "100.00"
     },    
+	("CAD", "COP"): {
+        "senderCounCOPCode": "CAN",
+        "senderCurrencyCode": "CAD",
+        "receiverCounCOPCode": "COL",
+        "sendAmount": "100.00"
+    },
+    ("USD", "COP"): {
+        "senderCounCOPCode": "USA",
+        "senderCurrencyCode": "USD",
+        "receiverCounCOPCode": "COL",
+        "sendAmount": "100.00"
+    },
+    ("EUR", "COP"): {
+        "senderCounCOPCode": "FRA",
+        "senderCurrencyCode": "EUR",
+        "receiverCounCOPCode": "COL",
+        "sendAmount": "100.00"
+    },
+	("CAD", "TRY"): {
+        "senderCountryCode": "CAN",
+        "senderCurrencyCode": "CAD",
+        "receiverCountryCode": "TUR",
+        "sendAmount": "100.00"
+    },
+    ("USD", "TRY"): {
+        "senderCountryCode": "USA",
+        "senderCurrencyCode": "USD",
+        "receiverCountryCode": "TUR",
+        "sendAmount": "100.00"
+    },
+    ("EUR", "TRY"): {
+        "senderCountryCode": "FRA",
+        "senderCurrencyCode": "EUR",
+        "receiverCountryCode": "TUR",
+        "sendAmount": "100.00"
+    },
 }
 
 
@@ -184,7 +220,31 @@ WU_CONFIG = {
     ("USD", "INR"): {
         "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-inr-rate.html",
         "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'
-    },     
+    },
+	("EUR", "TRY"): {
+        "url": "https://www.westernunion.com/fr/en/send-money-to-turkey.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("CAD", "TRY"): {
+        "url": "https://www.westernunion.com/ca/fr/send-money-to-turkey.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/strong/span'
+    },  
+    ("USD", "TRY"): {
+        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-try-rate.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'
+    },
+	("EUR", "COP"): {
+        "url": "https://www.westernunion.com/fr/en/send-money-to-colombia.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("CAD", "COP"): {
+        "url": "https://www.westernunion.com/ca/fr/send-money-to-colombia.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/strong/span'
+    },  
+    ("USD", "COP"): {
+        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-cop-rate.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'
+    },
 }
 
 # --- MyEasyTransfer config ---
