@@ -132,21 +132,21 @@ MONEYGRAM_CONFIG = {
         "sendAmount": "100.00"
     },    
 	("CAD", "COP"): {
-        "senderCounCOPCode": "CAN",
+        "senderCountryCode": "CAN",
         "senderCurrencyCode": "CAD",
-        "receiverCounCOPCode": "COL",
+        "receiverCountryCode": "COL",
         "sendAmount": "100.00"
     },
     ("USD", "COP"): {
-        "senderCounCOPCode": "USA",
+        "senderCountryCode": "USA",
         "senderCurrencyCode": "USD",
-        "receiverCounCOPCode": "COL",
+        "receiverCountryCode": "COL",
         "sendAmount": "100.00"
     },
     ("EUR", "COP"): {
-        "senderCounCOPCode": "FRA",
+        "senderCountryCode": "FRA",
         "senderCurrencyCode": "EUR",
-        "receiverCounCOPCode": "COL",
+        "receiverCountryCode": "COL",
         "sendAmount": "100.00"
     },
 	("CAD", "TRY"): {
@@ -226,7 +226,7 @@ WU_CONFIG = {
         "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
     },
     ("CAD", "TRY"): {
-        "url": "https://www.westernunion.com/ca/fr/send-money-to-turkey.html",
+        "url": "https://www.westernunion.com/ca/en/send-money-to-turkey.html",
         "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/strong/span'
     },  
     ("USD", "TRY"): {
@@ -317,10 +317,8 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             # Try to extract fxRate for whichever receive currency is present
             fee_quotes = data.get("feeQuotesByCurrency", {})
             fx_rate = None
-            if fee_quotes:
-                # Grab the first currency’s fxRate
-                first_currency = next(iter(fee_quotes))
-                fx_rate = fee_quotes[first_currency].get("fxRate")
+            if fee_quotes and to_currency in fee_quotes:
+                fx_rate = fee_quotes[to_currency].get("fxRate")
 
             await browser.close()
             return fx_rate
