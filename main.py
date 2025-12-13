@@ -227,7 +227,7 @@ WU_CONFIG = {
     },
     ("CAD", "TRY"): {
         "url": "https://www.westernunion.com/ca/en/send-money-to-turkey.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/strong/span'
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'
     },  
     ("USD", "TRY"): {
         "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-try-rate.html",
