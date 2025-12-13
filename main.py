@@ -43,6 +43,18 @@ LEMFI_CONFIG = {
         "url": "https://lemfi.com/en-fr/international-money-transfer/morocco",
         "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]'
     },
+    ("CAD", "INR"): {
+        "url": "https://lemfi.com/en-ca/international-money-transfer/india",
+        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]'
+    },
+    ("USD", "INR"): {
+        "url": "https://lemfi.com/en-us/international-money-transfer/india",
+        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]'
+    },
+    ("EUR", "INR"): {
+        "url": "https://lemfi.com/en-fr/international-money-transfer/india",
+        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]'
+    },    
 }
     
 # --- Moneygram config ---        
@@ -100,6 +112,24 @@ MONEYGRAM_CONFIG = {
         "senderCurrencyCode": "EUR",
         "receiverCountryCode": "MEX",
         "sendAmount": "100.00"
+    }, 
+    ("CAD", "INR"): {
+        "senderCountryCode": "CAN",
+        "senderCurrencyCode": "CAD",
+        "receiverCountryCode": "IND",
+        "sendAmount": "100.00"
+    },
+    ("USD", "INR"): {
+        "senderCountryCode": "USA",
+        "senderCurrencyCode": "USD",
+        "receiverCountryCode": "IND",
+        "sendAmount": "100.00"
+    },
+    ("EUR", "INR"): {
+        "senderCountryCode": "FRA",
+        "senderCurrencyCode": "EUR",
+        "receiverCountryCode": "IND",
+        "sendAmount": "100.00"
     },    
 }
 
@@ -141,6 +171,18 @@ WU_CONFIG = {
     },  
     ("USD", "MXN"): {
         "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-mxn-rate.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'
+    },  
+    ("EUR", "INR"): {
+        "url": "https://www.westernunion.com/fr/en/send-money-to-india.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("CAD", "INR"): {
+        "url": "https://www.westernunion.com/ca/fr/send-money-to-india.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/strong/span'
+    },  
+    ("USD", "INR"): {
+        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-inr-rate.html",
         "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'
     },     
 }
