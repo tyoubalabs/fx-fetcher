@@ -260,6 +260,9 @@ MYEASYTRANSFER_CONFIG = {
    
 }
 
+
+TARGET_ENDPOINT = "https://www.westernunion.com/router/"
+
 # --- MyEasyTransfer scraper ---
 async def fetch_myeasytransfer_rate(from_currency: str, to_currency: str) -> float | None:
     params = MYEASYTRANSFER_CONFIG.get((from_currency, to_currency))
@@ -332,17 +335,38 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
     if key not in WU_CONFIG:
         return None
     config = WU_CONFIG[key]
+
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
+            context = await browser.new_context()
+            page = await context.new_page()
+
+            rate_value: float | None = None
+
+            async def handle_response(response):
+                nonlocal rate_value
+                if response.url.startswith(TARGET_ENDPOINT):
+                    try:
+                        json_data = await response.json()
+                        # JSONPath to extract strikeExchangeRate
+                        expr = parse("$.data.products.products[7].strikeExchangeRate")
+                        matches = [match.value for match in expr.find(json_data)]
+                        if matches:
+                            rate_value = float(matches[0])
+                            logging.info(f"[WU] {from_currency}->{to_currency} rate={rate_value}")
+                    except Exception as e:
+                        logging.error(f"[WU JSON ERROR] {from_currency}->{to_currency}: {e}")
+
+            page.on("response", handle_response)
+
             await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
-            await page.wait_for_selector(config["selector"], timeout=60000)
-            text = await page.locator(config["selector"]).inner_text()
-            match = re.search(r"([\d.,]+)", text)
+            # give time for the router request to fire
+            await page.wait_for_timeout(10000)
+
             await browser.close()
             logging.info("[Browser closed]")
-            return match.group(1) if match else None
+            return rate_value
     except Exception as e:
         logging.error(f"[WU EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
