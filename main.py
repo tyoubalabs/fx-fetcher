@@ -331,6 +331,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
         logging.error(f"[MG EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
     
+
 # --- Western Union scraper ---
 async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
     """Fetch strikeExchangeRate for given currency pair from Western Union."""
@@ -347,9 +348,11 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
         page = await context.new_page()
 
         async def handle_response(response):
-            try: 
-			   if from_currency.upper() == "USD" and response.url.startswith(US_TARGET_ENDPOINT):
+            try:
+                # Choose endpoint and JSONPath depending on from_currency
+                if from_currency.upper() == "USD" and response.url.startswith(US_TARGET_ENDPOINT):
                     json_data = await response.json()
+                    # Direct dict access since path is simple
                     rate_value = json_data["categories"][0]["services"][0]["strike_fx_rate"]
                     logging.info(f"[WU] {from_currency}->{to_currency} strike_fx_rate={rate_value}")
                 elif response.url.startswith(TARGET_ENDPOINT):
@@ -357,17 +360,12 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
                     # Extract value using JSONPath
                     jsonpath_expr = parse("$.data.products.products[7].strikeExchangeRate")
                     matches = [match.value for match in jsonpath_expr.find(json_data)]
-
-                    # Extract value using JSONPath
-                    jsonpath_expr = parse("$.data.products.products[7].strikeExchangeRate")
-                    matches = [match.value for match in jsonpath_expr.find(json_data)]
-
                     if matches:
                         logging.info(f"[WU] {from_currency}->{to_currency} strikeExchangeRate={matches[0]}")
                     else:
                         logging.error(f"[WU JSONPATH MISS] {from_currency}->{to_currency}")
-                except Exception as e:
-                    logging.error(f"[WU JSON PARSE ERROR] {from_currency}->{to_currency}: {e}")
+            except Exception as e:
+                logging.error(f"[WU JSON PARSE ERROR] {from_currency}->{to_currency}: {e}")
 
         page.on("response", handle_response)
 
@@ -375,6 +373,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
         await page.wait_for_timeout(15000)
 
         await browser.close()
+
         
 # --- Lemfi scraper ---
 async def fetch_lemfi_rate(from_currency: str, to_currency: str) -> float | None:
