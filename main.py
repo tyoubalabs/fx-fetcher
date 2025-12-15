@@ -363,7 +363,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
 
                     if matches:
                         print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
-						logging.info(f"WU rate : {rate}")
+						#logging.info(f"WU rate : {rate}")
 						return rate
                     else:
                         print("⚠️ Could find the rate")
@@ -380,7 +380,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
                     rate = round(float(matches[0]), 4)
                     if matches:
                         print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
-						logging.info(f"WU rate : {rate}")
+						#logging.info(f"WU rate : {rate}")
 						return rate
                     else:
                         print("⚠️ Could find the rate")
