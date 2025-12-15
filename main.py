@@ -352,7 +352,8 @@ async def fetch_wu_rate(from_currency: str, to_currency: str):
                     #try:
                     json_data = await response.json()
                     logging.info("Captured JSON response")
-					logging.info(json_data)
+					logging.info(f"json_data")
+					
                     # Extract value using JSONPath
                     jsonpath_expr = parse("$.data.products.products[7].strikeExchangeRate")
                     matches = [match.value for match in jsonpath_expr.find(json_data)]
