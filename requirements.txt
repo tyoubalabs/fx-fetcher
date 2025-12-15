@@ -2,4 +2,4 @@ fastapi
 uvicorn[standard]
 playwright
 playwright-stealth
-
+jsonpath-ng
