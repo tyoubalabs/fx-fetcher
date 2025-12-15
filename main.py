@@ -340,21 +340,21 @@ async def fetch_wu_rate(from_currency: str, to_currency: str):
         raise ValueError(f"No config found for {from_currency} → {to_currency}")
 
     url = config["url"]
-	last_response = None   # <-- fixed: 4 spaces, not tab
+    
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         context = await browser.new_context()
         page = await context.new_page()
-			
+        last_response = None
+
         async def handle_response(response):
             try:
                 if response.url.startswith(TARGET_ENDPOINT):
-					last_response = response  # overwrite each time
-					json_data = await last_response.json()
+                    last_response = response  # overwrite each time
                     #try:
-                    json_data = await response.json()
-                    logging.info("Captured JSON response")
+                    json_data = await last_response.json()
+                    print("✅ Captured JSON response")
 
                     # Extract value using JSONPath
                     jsonpath_expr = parse("$.data.products.products[7].strikeExchangeRate")
@@ -362,14 +362,13 @@ async def fetch_wu_rate(from_currency: str, to_currency: str):
                     rate = round(float(matches[0]), 4)
 
                     if matches:
-                        logging.info(f"{from_currency}->{to_currency} strikeExchangeRate: {rate}")
+                        print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
                     else:
-                        logging.info("Could find the rate")    
+                        print("⚠️ Could find the rate")    
                 elif from_currency.upper() != "CAD" and US_TARGET_ENDPOINT in response.url:
-					last_response = response  # overwrite each time
-				    json_data = await last_response.json()
-                    json_data = await response.json()
-                    logging.info("Captured JSON response")
+                    last_response = response  # overwrite each time
+                    json_data = await last_response.json()
+                    print("✅ Captured JSON response")
 
                     # Extract value using JSONPath
                     if from_currency.upper() == "USD": jsonpath_expr = parse("$.categories[0].services[0].strike_fx_rate")
@@ -377,11 +376,11 @@ async def fetch_wu_rate(from_currency: str, to_currency: str):
                     matches = [match.value for match in jsonpath_expr.find(json_data)]
                     rate = round(float(matches[0]), 4)
                     if matches:
-                        logging.info(f"{from_currency}->{to_currency} strikeExchangeRate: {rate}")
+                        print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
                     else:
-                        logging.info("Could find the rate")        
+                        print("⚠️ Could find the rate")        
             except Exception as e:
-                logging.info("Could not parse JSON:", e)
+                print("⚠️ Could not parse JSON:", e)
 
         page.on("response", handle_response)
 
