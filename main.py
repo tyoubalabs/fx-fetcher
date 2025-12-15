@@ -7,6 +7,7 @@ import logging
 import urllib.request
 import json
 import webbrowser
+from jsonpath_ng import parse
 from urllib.parse import urlencode
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -328,48 +329,83 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
     except Exception as e:
         logging.error(f"[MG EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
-
-# --- Western Union scraper ---        
+    
+# --- Western Union scraper ---
 async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
     key = (from_currency.upper(), to_currency.upper())
     if key not in WU_CONFIG:
+        logging.warning(f"[WU SKIP] No config for {from_currency}->{to_currency}")
         return None
     config = WU_CONFIG[key]
 
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context()
+            # Use a desktop UA and locale to reduce friction
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled"]
+            )
+            context = await browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                ),
+                locale="en-US",
+                viewport={"width": 1366, "height": 900}
+            )
             page = await context.new_page()
 
-            rate_value: float | None = None
-
-            async def handle_response(response):
-                nonlocal rate_value
-                if response.url.startswith(TARGET_ENDPOINT):
-                    try:
-                        json_data = await response.json()
-                        # JSONPath to extract strikeExchangeRate
-                        expr = parse("$.data.products.products[7].strikeExchangeRate")
-                        matches = [match.value for match in expr.find(json_data)]
-                        if matches:
-                            rate_value = float(matches[0])
-                            logging.info(f"[WU] {from_currency}->{to_currency} rate={rate_value}")
-                    except Exception as e:
-                        logging.error(f"[WU JSON ERROR] {from_currency}->{to_currency}: {e}")
-
-            page.on("response", handle_response)
-
+            # Navigate and wait for network to settle
             await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
-            # give time for the router request to fire
-            await page.wait_for_timeout(10000)
+
+            # Best effort: dismiss cookie consent if present (non-fatal)
+            try:
+                # Common consent buttons WU uses; optional and ignored on failure
+                await page.locator("button:has-text('Accept All')").first.click(timeout=2000)
+            except Exception:
+                try:
+                    await page.locator("button:has-text('Accept all')").first.click(timeout=2000)
+                except Exception:
+                    pass  # ignore
+
+            # Explicitly wait for the router response
+            def is_router_response(resp):
+                return resp.url.startswith(TARGET_ENDPOINT) and resp.request.method in ("GET", "POST")
+
+            router_resp = None
+            try:
+                router_resp = await page.wait_for_response(is_router_response, timeout=20000)
+                logging.info(f"[WU] Router response captured for {from_currency}->{to_currency}: {router_resp.url}")
+            except Exception:
+                logging.error(f"[WU TIMEOUT] No router response for {from_currency}->{to_currency}")
+                await browser.close()
+                logging.info("[Browser closed]")
+                return None
+
+            # Parse JSON
+            rate_value: float | None = None
+            try:
+                json_data = await router_resp.json()
+                expr = parse("$.data.products.products[7].strikeExchangeRate")
+                matches = [m.value for m in expr.find(json_data)]
+                if matches:
+                    # Some values may be strings with commas; normalize
+                    raw = str(matches[0]).replace(",", "")
+                    rate_value = float(raw)
+                    logging.info(f"[WU] {from_currency}->{to_currency} strikeExchangeRate={rate_value}")
+                else:
+                    logging.error(f"[WU JSONPATH MISS] {from_currency}->{to_currency}")
+            except Exception as e:
+                logging.error(f"[WU JSON PARSE ERROR] {from_currency}->{to_currency}: {e}")
 
             await browser.close()
             logging.info("[Browser closed]")
             return rate_value
+
     except Exception as e:
         logging.error(f"[WU EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
+
         
 # --- Lemfi scraper ---
 async def fetch_lemfi_rate(from_currency: str, to_currency: str) -> float | None:
