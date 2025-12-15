@@ -7,6 +7,7 @@ import logging
 import urllib.request
 import json
 import webbrowser
+from jsonpath_ng import parse
 from urllib.parse import urlencode
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -131,6 +132,42 @@ MONEYGRAM_CONFIG = {
         "receiverCountryCode": "IND",
         "sendAmount": "100.00"
     },    
+	("CAD", "COP"): {
+        "senderCountryCode": "CAN",
+        "senderCurrencyCode": "CAD",
+        "receiverCountryCode": "COL",
+        "sendAmount": "100.00"
+    },
+    ("USD", "COP"): {
+        "senderCountryCode": "USA",
+        "senderCurrencyCode": "USD",
+        "receiverCountryCode": "COL",
+        "sendAmount": "100.00"
+    },
+    ("EUR", "COP"): {
+        "senderCountryCode": "FRA",
+        "senderCurrencyCode": "EUR",
+        "receiverCountryCode": "COL",
+        "sendAmount": "100.00"
+    },
+	("CAD", "TRY"): {
+        "senderCountryCode": "CAN",
+        "senderCurrencyCode": "CAD",
+        "receiverCountryCode": "TUR",
+        "sendAmount": "100.00"
+    },
+    ("USD", "TRY"): {
+        "senderCountryCode": "USA",
+        "senderCurrencyCode": "USD",
+        "receiverCountryCode": "TUR",
+        "sendAmount": "100.00"
+    },
+    ("EUR", "TRY"): {
+        "senderCountryCode": "FRA",
+        "senderCurrencyCode": "EUR",
+        "receiverCountryCode": "TUR",
+        "sendAmount": "100.00"
+    },
 }
 
 
@@ -184,7 +221,31 @@ WU_CONFIG = {
     ("USD", "INR"): {
         "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-inr-rate.html",
         "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'
-    },     
+    },
+	("EUR", "TRY"): {
+        "url": "https://www.westernunion.com/fr/en/send-money-to-turkey.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("CAD", "TRY"): {
+        "url": "https://www.westernunion.com/ca/en/send-money-to-turkey.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },  
+    ("USD", "TRY"): {
+        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-try-rate.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'
+    },
+	("EUR", "COP"): {
+        "url": "https://www.westernunion.com/fr/en/send-money-to-colombia.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span'
+    },
+    ("CAD", "COP"): {
+        "url": "https://www.westernunion.com/ca/fr/send-money-to-colombia.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/strong/span'
+    },  
+    ("USD", "COP"): {
+        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-cop-rate.html",
+        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span'
+    },
 }
 
 # --- MyEasyTransfer config ---
@@ -199,6 +260,10 @@ MYEASYTRANSFER_CONFIG = {
     },    
    
 }
+
+
+TARGET_ENDPOINT = "https://www.westernunion.com/router/"
+US_TARGET_ENDPOINT = "https://www.westernunion.com/wuconnect/prices/catalog"
 
 # --- MyEasyTransfer scraper ---
 async def fetch_myeasytransfer_rate(from_currency: str, to_currency: str) -> float | None:
@@ -257,37 +322,73 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             # Try to extract fxRate for whichever receive currency is present
             fee_quotes = data.get("feeQuotesByCurrency", {})
             fx_rate = None
-            if fee_quotes:
-                # Grab the first currency’s fxRate
-                first_currency = next(iter(fee_quotes))
-                fx_rate = fee_quotes[first_currency].get("fxRate")
+            if fee_quotes and to_currency in fee_quotes:
+                fx_rate = fee_quotes[to_currency].get("fxRate")
 
             await browser.close()
             return fx_rate
     except Exception as e:
         logging.error(f"[MG EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
+    
 
-# --- Western Union scraper ---        
-async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
-    key = (from_currency.upper(), to_currency.upper())
-    if key not in WU_CONFIG:
-        return None
-    config = WU_CONFIG[key]
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            await page.goto(config["url"], wait_until="domcontentloaded", timeout=60000)
-            await page.wait_for_selector(config["selector"], timeout=60000)
-            text = await page.locator(config["selector"]).inner_text()
-            match = re.search(r"([\d.,]+)", text)
-            await browser.close()
-            logging.info("[Browser closed]")
-            return match.group(1) if match else None
-    except Exception as e:
-        logging.error(f"[WU EXCEPTION] {from_currency}->{to_currency}: {e}")
-        return None
+# --- Western Union scraper ---
+async def fetch_wu_rate(from_currency: str, to_currency: str):
+    """Fetch strikeExchangeRate for given currency pair from Western Union."""
+    config = WU_CONFIG.get((from_currency, to_currency))
+    if not config:
+        raise ValueError(f"No config found for {from_currency} → {to_currency}")
+
+    url = config["url"]
+	last_response = None
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=False)
+        context = await browser.new_context()
+        page = await context.new_page()
+			
+        async def handle_response(response):
+            try:
+                if response.url.startswith(TARGET_ENDPOINT):
+					last_response = response  # overwrite each time
+					json_data = await last_response.json()
+                    #try:
+                    json_data = await response.json()
+                    logging.info("Captured JSON response")
+
+                    # Extract value using JSONPath
+                    jsonpath_expr = parse("$.data.products.products[7].strikeExchangeRate")
+                    matches = [match.value for match in jsonpath_expr.find(json_data)]
+                    rate = round(float(matches[0]), 4)
+
+                    if matches:
+                        logging.info(f"{from_currency}->{to_currency} strikeExchangeRate: {rate}")
+                    else:
+                        logging.info("Could find the rate")    
+                elif from_currency.upper() != "CAD" and US_TARGET_ENDPOINT in response.url:
+					last_response = response  # overwrite each time
+				    json_data = await last_response.json()
+                    json_data = await response.json()
+                    logging.info("Captured JSON response")
+
+                    # Extract value using JSONPath
+                    if from_currency.upper() == "USD": jsonpath_expr = parse("$.categories[0].services[0].strike_fx_rate")
+                    if from_currency.upper() == "EUR": jsonpath_expr = parse("$.services_groups[1].pay_groups[0].strike_fx_rate")
+                    matches = [match.value for match in jsonpath_expr.find(json_data)]
+                    rate = round(float(matches[0]), 4)
+                    if matches:
+                        logging.info(f"{from_currency}->{to_currency} strikeExchangeRate: {rate}")
+                    else:
+                        logging.info("Could find the rate")        
+            except Exception as e:
+                logging.info("Could not parse JSON:", e)
+
+        page.on("response", handle_response)
+
+        await page.goto(url, timeout=60000)
+        await page.wait_for_timeout(15000)
+
+        await browser.close()
         
 # --- Lemfi scraper ---
 async def fetch_lemfi_rate(from_currency: str, to_currency: str) -> float | None:
