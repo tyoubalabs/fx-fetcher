@@ -340,13 +340,13 @@ async def fetch_wu_rate(from_currency: str, to_currency: str):
         raise ValueError(f"No config found for {from_currency} → {to_currency}")
 
     url = config["url"]
+	last_response = None
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         context = await browser.new_context()
         page = await context.new_page()
-		last_response = None
-		
+			
         async def handle_response(response):
             try:
                 if response.url.startswith(TARGET_ENDPOINT):
