@@ -346,80 +346,65 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
 
 # --- Western Union scraper ---
 async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
+    """Fetch strikeExchangeRate for given currency pair from Western Union."""
     config = WU_CONFIG.get((from_currency, to_currency))
     if not config:
         raise ValueError(f"No config found for {from_currency} → {to_currency}")
 
     url = config["url"]
+    rate: float | None = None  # shared variable
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         context = await browser.new_context()
         page = await context.new_page()
-        last_response = None
 
         async def handle_response(response):
+            nonlocal rate
             try:
                 if response.url.startswith(TARGET_ENDPOINT):
-                    last_response = response  # overwrite each time
-                    # try:
-                    json_data = await last_response.json()
+                    json_data = await response.json()
                     print("✅ Captured JSON response")
-
-                    # Extract value using JSONPath
-                    jsonpath_expr = parse(
-                        "$.data.products.products[7].strikeExchangeRate"
-                    )
-                    matches = [match.value for match in jsonpath_expr.find(json_data)]
-                    rate = round(float(matches[0]), 4)
-
+                    expr = parse("$.data.products.products[7].strikeExchangeRate")
+                    matches = [m.value for m in expr.find(json_data)]
                     if matches:
-                        logging.info(f"WU rate : {rate}")
-                        return rate
+                        rate = round(float(matches[0]), 4)
+                        print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
 
-                    else:
-                        logging.info("Could find the rate")
-                        return None
-
-                elif (
-                    from_currency.upper() != "CAD"
-                    and US_TARGET_ENDPOINT in response.url
-                ):
-                    last_response = response  # overwrite each time
-                    json_data = await last_response.json()
+                elif from_currency.upper() != "CAD" and US_TARGET_ENDPOINT in response.url:
+                    json_data = await response.json()
                     print("✅ Captured JSON response")
-
-                    # Extract value using JSONPath
                     if from_currency.upper() == "USD":
-                        jsonpath_expr = parse(
-                            "$.categories[0].services[0].strike_fx_rate"
-                        )
-                    if from_currency.upper() == "EUR":
-                        jsonpath_expr = parse(
-                            "$.services_groups[1].pay_groups[0].strike_fx_rate"
-                        )
-                    matches = [match.value for match in jsonpath_expr.find(json_data)]
-                    rate = round(float(matches[0]), 4)
-                    if matches:
-                        logging.info(f"WU rate : {rate}")
-                        return rate
-
+                        expr = parse("$.categories[0].services[0].strike_fx_rate")
+                    elif from_currency.upper() == "EUR":
+                        expr = parse("$.services_groups[1].pay_groups[0].strike_fx_rate")
                     else:
-                        logging.info("Could find the rate")
-                        return None
-
+                        return
+                    matches = [m.value for m in expr.find(json_data)]
+                    if matches:
+                        rate = round(float(matches[0]), 4)
+                        print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
             except Exception as e:
-                return None
-            # print("⚠️ Could not parse JSON:", e)
-
-        # return None
+                print("⚠️ Could not parse JSON:", e)
 
         page.on("response", handle_response)
 
         await page.goto(url, timeout=60000)
         await page.wait_for_timeout(15000)
 
+        # Fallback: scrape DOM if API didn’t give us a rate
+        if rate is None and "selector" in config:
+            try:
+                text = await page.locator(config["selector"]).inner_text()
+                match = re.search(r"([\d.,]+)", text)
+                if match:
+                    rate = float(match.group(1).replace(",", ""))
+                    print(f"🎯 {from_currency}->{to_currency} DOM rate:", rate)
+            except Exception as e:
+                print("⚠️ DOM fallback failed:", e)
+
         await browser.close()
+        return rate
 
 
 # --- Lemfi scraper ---
