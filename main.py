@@ -369,23 +369,35 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
                     matches = [m.value for m in expr.find(json_data)]
                     if matches:
                         rate = round(float(matches[0]), 4)
-                        print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
+                        print(
+                            f"🎯 {from_currency}->{to_currency} strikeExchangeRate:",
+                            rate,
+                        )
 
-                elif from_currency.upper() != "CAD" and US_TARGET_ENDPOINT in response.url:
+                elif (
+                    from_currency.upper() != "CAD"
+                    and US_TARGET_ENDPOINT in response.url
+                ):
                     json_data = await response.json()
                     print("✅ Captured JSON response")
                     if from_currency.upper() == "USD":
                         expr = parse("$.categories[0].services[0].strike_fx_rate")
                     elif from_currency.upper() == "EUR":
-                        expr = parse("$.services_groups[1].pay_groups[0].strike_fx_rate")
+                        expr = parse(
+                            "$.services_groups[1].pay_groups[0].strike_fx_rate"
+                        )
                     else:
                         return
                     matches = [m.value for m in expr.find(json_data)]
                     if matches:
                         rate = round(float(matches[0]), 4)
-                        print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
+                        print(
+                            f"🎯 {from_currency}->{to_currency} strikeExchangeRate:",
+                            rate,
+                        )
             except Exception as e:
                 print("⚠️ Could not parse JSON:", e)
+                logging.error(f"[WU EXCEPTION] {from_currency}->{to_currency}: {e}")
 
         page.on("response", handle_response)
 
