@@ -333,11 +333,10 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
     
 
 # --- Western Union scraper ---
-async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
+async def fetch_wu_rate(from_currency: str, to_currency: str):
     """Fetch strikeExchangeRate for given currency pair from Western Union."""
     config = WU_CONFIG.get((from_currency, to_currency))
     if not config:
-        logging.warning(f"[WU SKIP] No config for {from_currency}->{to_currency}")
         raise ValueError(f"No config found for {from_currency} → {to_currency}")
 
     url = config["url"]
@@ -349,23 +348,35 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
 
         async def handle_response(response):
             try:
-                # Choose endpoint and JSONPath depending on from_currency
-                if from_currency.upper() == "USD" and response.url.startswith(US_TARGET_ENDPOINT):
+                if response.url.startswith(TARGET_ENDPOINT):
+                    #try:
                     json_data = await response.json()
-                    # Direct dict access since path is simple
-                    rate_value = json_data["categories"][0]["services"][0]["strike_fx_rate"]
-                    logging.info(f"[WU] {from_currency}->{to_currency} strike_fx_rate={rate_value}")
-                elif response.url.startswith(TARGET_ENDPOINT):
-                    json_data = await response.json()
+                    logging.info("Captured JSON response")
+
                     # Extract value using JSONPath
                     jsonpath_expr = parse("$.data.products.products[7].strikeExchangeRate")
                     matches = [match.value for match in jsonpath_expr.find(json_data)]
+                    rate = round(float(matches[0]), 4)
+
                     if matches:
-                        logging.info(f"[WU] {from_currency}->{to_currency} strikeExchangeRate={matches[0]}")
+                        logging.info(f"{from_currency}->{to_currency} strikeExchangeRate:", rate)
                     else:
-                        logging.error(f"[WU JSONPATH MISS] {from_currency}->{to_currency}")
+                        logging.info("Could find the rate")    
+                elif from_currency.upper() != "CAD" and US_TARGET_ENDPOINT in response.url:
+                    json_data = await response.json()
+                    logging.info("Captured JSON response")
+
+                    # Extract value using JSONPath
+                    if from_currency.upper() == "USD": jsonpath_expr = parse("$.categories[0].services[0].strike_fx_rate")
+                    if from_currency.upper() == "EUR": jsonpath_expr = parse("$.services_groups[1].pay_groups[0].strike_fx_rate")
+                    matches = [match.value for match in jsonpath_expr.find(json_data)]
+                    rate = round(float(matches[0]), 4)
+                    if matches:
+                        logging.info(f"{from_currency}->{to_currency} strikeExchangeRate:", rate)
+                    else:
+                        logging.info("Could find the rate")        
             except Exception as e:
-                logging.error(f"[WU JSON PARSE ERROR] {from_currency}->{to_currency}: {e}")
+                logging.info("Could not parse JSON:", e)
 
         page.on("response", handle_response)
 
@@ -373,7 +384,6 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
         await page.wait_for_timeout(15000)
 
         await browser.close()
-
         
 # --- Lemfi scraper ---
 async def fetch_lemfi_rate(from_currency: str, to_currency: str) -> float | None:
