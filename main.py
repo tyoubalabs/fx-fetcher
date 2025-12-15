@@ -374,7 +374,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
 
             router_resp = None
             try:
-                router_resp = await page.wait_for_response(is_router_response, timeout=20000)
+                router_resp = await page.wait_for_response(lambda resp: resp.url.startswith(TARGET_ENDPOINT), timeout=40000)
                 logging.info(f"[WU] Router response captured for {from_currency}->{to_currency}: {router_resp.url}")
             except Exception:
                 logging.error(f"[WU TIMEOUT] No router response for {from_currency}->{to_currency}")
