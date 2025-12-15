@@ -351,56 +351,46 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
         raise ValueError(f"No config found for {from_currency} → {to_currency}")
 
     url = config["url"]
-    rate: float | None = None
-    rate_event = asyncio.Event()
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
-        page = await browser.new_page()
-
-        async def handle_response(response):
-            nonlocal rate
-            try:
-                if response.url.startswith(TARGET_ENDPOINT):
-                    data = await response.json()
-                    expr = parse("$.data.products.products[7].strikeExchangeRate")
-                elif (
-                    from_currency.upper() == "USD"
-                    and US_TARGET_ENDPOINT in response.url
-                ):
-                    data = await response.json()
-                    expr = parse("$.categories[0].services[0].strike_fx_rate")
-                elif (
-                    from_currency.upper() == "EUR"
-                    and US_TARGET_ENDPOINT in response.url
-                ):
-                    data = await response.json()
-                    expr = parse("$.services_groups[1].pay_groups[0].strike_fx_rate")
-                else:
-                    return
-
-                matches = [m.value for m in expr.find(data)]
-                if matches:
-                    rate = round(float(matches[0]), 4)
-                    print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
-                    rate_event.set()
-            except Exception as e:
-                print("⚠️ Could not parse JSON:", e)
-                logging.error(f"[WU EXCEPTION] {from_currency}->{to_currency}: {e}")
-
-        page.on("response", handle_response)
+        context = await browser.new_context()
+        page = await context.new_page()
 
         await page.goto(url, timeout=60000)
 
-        # Wait until the handler sets the event or timeout
         try:
-            await asyncio.wait_for(rate_event.wait(), timeout=15)
-        except asyncio.TimeoutError:
-            print("⚠️ Timed out waiting for WU JSON")
-            logging.error("Timed out waiting for WU JSON")
+            response = await page.wait_for_response(
+                lambda r: r.url.startswith(TARGET_ENDPOINT) or US_TARGET_ENDPOINT in r.url,
+                timeout=15000
+            )
+
+            # ✅ Parse JSON BEFORE closing browser
+            json_data = await response.json()
+            print("✅ Captured JSON response")
+
+            if response.url.startswith(TARGET_ENDPOINT):
+                expr = parse("$.data.products.products[7].strikeExchangeRate")
+            elif from_currency.upper() == "USD":
+                expr = parse("$.categories[0].services[0].strike_fx_rate")
+            elif from_currency.upper() == "EUR":
+                expr = parse("$.services_groups[1].pay_groups[0].strike_fx_rate")
+            else:
+                expr = None
+
+            if expr:
+                matches = [m.value for m in expr.find(json_data)]
+                if matches:
+                    rate = round(float(matches[0]), 4)
+                    print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
+                    await browser.close()
+                    return rate
+
+        except Exception as e:
+            logging.error(f"[WU EXCEPTION] {from_currency}->{to_currency}: {e}")
 
         await browser.close()
-        return rate
+        return None
 
 
 
