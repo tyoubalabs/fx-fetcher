@@ -345,10 +345,13 @@ async def fetch_wu_rate(from_currency: str, to_currency: str):
         browser = await p.chromium.launch(headless=False)
         context = await browser.new_context()
         page = await context.new_page()
-
+		last_response = None
+		
         async def handle_response(response):
             try:
                 if response.url.startswith(TARGET_ENDPOINT):
+					last_response = response  # overwrite each time
+					json_data = await last_response.json()
                     #try:
                     json_data = await response.json()
                     logging.info("Captured JSON response")
@@ -363,6 +366,8 @@ async def fetch_wu_rate(from_currency: str, to_currency: str):
                     else:
                         logging.info("Could find the rate")    
                 elif from_currency.upper() != "CAD" and US_TARGET_ENDPOINT in response.url:
+					last_response = response  # overwrite each time
+				    json_data = await last_response.json()
                     json_data = await response.json()
                     logging.info("Captured JSON response")
 
