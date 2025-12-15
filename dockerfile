@@ -12,9 +12,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install playwright
-RUN playwright install --with-deps chromium
+# Upgrade pip and install Python deps
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt \
+    && pip install --upgrade playwright
+
+# Install Playwright browsers (Chromium, Firefox, WebKit)
+RUN playwright install --with-deps
 
 COPY . .
 
