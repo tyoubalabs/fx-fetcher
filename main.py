@@ -263,6 +263,7 @@ MYEASYTRANSFER_CONFIG = {
 
 
 TARGET_ENDPOINT = "https://www.westernunion.com/router/"
+US_TARGET_ENDPOINT = "https://www.westernunion.com/wuconnect/prices/catalog"
 
 # --- MyEasyTransfer scraper ---
 async def fetch_myeasytransfer_rate(from_currency: str, to_currency: str) -> float | None:
@@ -346,10 +347,16 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
         page = await context.new_page()
 
         async def handle_response(response):
-            if response.url.startswith(TARGET_ENDPOINT):
-                try:
+            try: 
+			   if from_currency.upper() == "USD" and response.url.startswith(US_TARGET_ENDPOINT):
                     json_data = await response.json()
-                   
+                    rate_value = json_data["categories"][0]["services"][0]["strike_fx_rate"]
+                    logging.info(f"[WU] {from_currency}->{to_currency} strike_fx_rate={rate_value}")
+                elif response.url.startswith(TARGET_ENDPOINT):
+                    json_data = await response.json()
+                    # Extract value using JSONPath
+                    jsonpath_expr = parse("$.data.products.products[7].strikeExchangeRate")
+                    matches = [match.value for match in jsonpath_expr.find(json_data)]
 
                     # Extract value using JSONPath
                     jsonpath_expr = parse("$.data.products.products[7].strikeExchangeRate")
