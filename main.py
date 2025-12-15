@@ -342,7 +342,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
         async with async_playwright() as p:
             # Use a desktop UA and locale to reduce friction
             browser = await p.chromium.launch(
-                headless=True,
+                headless=False,
                 args=["--disable-blink-features=AutomationControlled"]
             )
             context = await browser.new_context(
