@@ -22,9 +22,7 @@ RUN playwright install --with-deps
 
 COPY . .
 
-# Expose Render’s dynamic port
-ENV PORT=8000
 EXPOSE $PORT
 
-# Run FastAPI with uvicorn
-CMD ["xvfb-run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# ✅ Shell form CMD so $PORT expands
+CMD xvfb-run -a uvicorn main:app --host 0.0.0.0 --port $PORT
