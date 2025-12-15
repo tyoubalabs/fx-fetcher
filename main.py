@@ -333,7 +333,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
     
 
 # --- Western Union scraper ---
-async def fetch_wu_rate(from_currency: str, to_currency: str):
+async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
     """Fetch strikeExchangeRate for given currency pair from Western Union."""
     config = WU_CONFIG.get((from_currency, to_currency))
     if not config:
@@ -363,8 +363,11 @@ async def fetch_wu_rate(from_currency: str, to_currency: str):
 
                     if matches:
                         print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
+						logging.info(f"WU rate : {rate}")
+						return rate
                     else:
-                        print("⚠️ Could find the rate")    
+                        print("⚠️ Could find the rate")
+						return None
                 elif from_currency.upper() != "CAD" and US_TARGET_ENDPOINT in response.url:
                     last_response = response  # overwrite each time
                     json_data = await last_response.json()
@@ -377,10 +380,14 @@ async def fetch_wu_rate(from_currency: str, to_currency: str):
                     rate = round(float(matches[0]), 4)
                     if matches:
                         print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
+						logging.info(f"WU rate : {rate}")
+						return rate
                     else:
-                        print("⚠️ Could find the rate")        
+                        print("⚠️ Could find the rate")
+						return None
             except Exception as e:
                 print("⚠️ Could not parse JSON:", e)
+				return None
 
         page.on("response", handle_response)
 
