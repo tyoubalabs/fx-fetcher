@@ -340,7 +340,7 @@ async def fetch_wu_rate(from_currency: str, to_currency: str):
         raise ValueError(f"No config found for {from_currency} → {to_currency}")
 
     url = config["url"]
-	last_response = None
+	last_response = None   # <-- fixed: 4 spaces, not tab
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
