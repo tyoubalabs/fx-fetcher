@@ -392,17 +392,6 @@ async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
         await page.goto(url, timeout=60000)
         await page.wait_for_timeout(15000)
 
-        # Fallback: scrape DOM if API didn’t give us a rate
-        if rate is None and "selector" in config:
-            try:
-                text = await page.locator(config["selector"]).inner_text()
-                match = re.search(r"([\d.,]+)", text)
-                if match:
-                    rate = float(match.group(1).replace(",", ""))
-                    print(f"🎯 {from_currency}->{to_currency} DOM rate:", rate)
-            except Exception as e:
-                print("⚠️ DOM fallback failed:", e)
-
         await browser.close()
         return rate
 
