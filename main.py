@@ -464,8 +464,8 @@ async def refresh():
         os.replace(TEMP_CACHE_FILE, CACHE_FILE)
 
         logging.info("[CACHE UPDATED]")
-        # sleep 15 minutes
-        await asyncio.sleep(900)
+        # sleep 2 hours
+        await asyncio.sleep(7200)
 
 
 # --- Endpoints that read cache ---
