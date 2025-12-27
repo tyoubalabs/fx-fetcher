@@ -328,14 +328,15 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             # Extract JSON text from <pre>
             raw_text = await page.inner_text("pre")
             data = json.loads(raw_text)
-            # Save session state for next run
-            await context.storage_state(path=SESSION_FILE)
             logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {raw_text}")
             # Try to extract fxRate for whichever receive currency is present
             fee_quotes = data.get("feeQuotesByCurrency", {})
             fx_rate = None
             if fee_quotes and to_currency in fee_quotes:
                 fx_rate = fee_quotes[to_currency].get("fxRate")
+                # Save session state for next run
+                await context.storage_state(path=SESSION_FILE)
+                logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {fx_rate}")
 
             await browser.close()
             return fx_rate
