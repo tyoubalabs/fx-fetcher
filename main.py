@@ -6,6 +6,7 @@ import asyncio
 import logging
 import urllib.request
 import json
+import random
 import webbrowser
 from jsonpath_ng import parse
 from urllib.parse import urlencode
@@ -26,7 +27,11 @@ app.add_middleware(
 
 CACHE_FILE = "fx_rates.json"
 TEMP_CACHE_FILE = "tmp_fx_rates.json"
-SESSION_FILE = "moneygram_session.json"
+SESSION_FILE1 = "moneygram_session1.json"
+SESSION_FILE2 = "moneygram_session2.json"
+SESSION_FILE3 = "moneygram_session3.json"
+SESSION_FILE4 = "moneygram_session4.json"
+File = 1
 
 # --- Lemfi config ---
 LEMFI_CONFIG = {
@@ -62,29 +67,33 @@ LEMFI_CONFIG = {
 
 # --- Moneygram config ---
 MONEYGRAM_CONFIG = {
-    ("CAD", "TND"): {
-        "senderCountryCode": "CAN",
-        "senderCurrencyCode": "CAD",
-        "receiverCountryCode": "TUN",
-        "sendAmount": "100.00",
-    },
     ("CAD", "MAD"): {
         "senderCountryCode": "CAN",
         "senderCurrencyCode": "CAD",
         "receiverCountryCode": "MAR",
         "sendAmount": "100.00",
+        "url": "https://www.moneygram.com/ca/en/corridor/morocco",
     },
+    ("CAD", "TND"): {
+        "senderCountryCode": "CAN",
+        "senderCurrencyCode": "CAD",
+        "receiverCountryCode": "TUN",
+        "sendAmount": "1000.00",
+        "url": "https://www.moneygram.com/ca/en/corridor/tunisia",
+    },    
     ("CAD", "MXN"): {
         "senderCountryCode": "CAN",
         "senderCurrencyCode": "CAD",
         "receiverCountryCode": "MEX",
         "sendAmount": "100.00",
+        "url": "https://www.moneygram.com/ca/en/corridor/mexico",
     },
     ("USD", "TND"): {
         "senderCountryCode": "USA",
         "senderCurrencyCode": "USD",
         "receiverCountryCode": "TUN",
         "sendAmount": "100.00",
+        "url": "https://www.moneygram.com/us/en/corridor/tunisia",
     },
     ("USD", "MXN"): {
         "senderCountryCode": "USA",
@@ -97,24 +106,28 @@ MONEYGRAM_CONFIG = {
         "senderCurrencyCode": "USD",
         "receiverCountryCode": "MAR",
         "sendAmount": "100.00",
+        "url": "https://www.moneygram.com/us/en/corridor/morocco",
     },
     ("EUR", "MAD"): {
         "senderCountryCode": "FRA",
         "senderCurrencyCode": "EUR",
         "receiverCountryCode": "MAR",
         "sendAmount": "100.00",
+        "url": "https://www.moneygram.com/fr/en/corridor/morocco",
     },
     ("EUR", "TND"): {
         "senderCountryCode": "FRA",
         "senderCurrencyCode": "EUR",
         "receiverCountryCode": "TUN",
         "sendAmount": "100.00",
+        "url": "https://www.moneygram.com/fr/en/corridor/tunisia",
     },
     ("EUR", "MXN"): {
         "senderCountryCode": "FRA",
         "senderCurrencyCode": "EUR",
         "receiverCountryCode": "MEX",
         "sendAmount": "100.00",
+        "url": "https://www.moneygram.com/fr/en/corridor/mexico",
     },
     ("CAD", "INR"): {
         "senderCountryCode": "CAN",
@@ -127,6 +140,7 @@ MONEYGRAM_CONFIG = {
         "senderCurrencyCode": "USD",
         "receiverCountryCode": "IND",
         "sendAmount": "100.00",
+        "url": "https://www.moneygram.com/us/en/corridor/india",
     },
     ("EUR", "INR"): {
         "senderCountryCode": "FRA",
@@ -139,6 +153,7 @@ MONEYGRAM_CONFIG = {
         "senderCurrencyCode": "CAD",
         "receiverCountryCode": "COL",
         "sendAmount": "100.00",
+        "url": "https://www.moneygram.com/ca/en/corridor/colombia",
     },
     ("USD", "COP"): {
         "senderCountryCode": "USA",
@@ -151,6 +166,7 @@ MONEYGRAM_CONFIG = {
         "senderCurrencyCode": "EUR",
         "receiverCountryCode": "COL",
         "sendAmount": "100.00",
+        "url": "https://www.moneygram.com/fr/en/corridor/colombia",
     },
     ("CAD", "TRY"): {
         "senderCountryCode": "CAN",
@@ -158,18 +174,19 @@ MONEYGRAM_CONFIG = {
         "receiverCountryCode": "TUR",
         "sendAmount": "100.00",
     },
+    ("EUR", "TRY"): {
+        "senderCountryCode": "FRA",
+        "senderCurrencyCode": "EUR",
+        "receiverCountryCode": "TUR",
+        "sendAmount": "1000.00",
+    },
     ("USD", "TRY"): {
         "senderCountryCode": "USA",
         "senderCurrencyCode": "USD",
         "receiverCountryCode": "TUR",
         "sendAmount": "100.00",
     },
-    ("EUR", "TRY"): {
-        "senderCountryCode": "FRA",
-        "senderCurrencyCode": "EUR",
-        "receiverCountryCode": "TUR",
-        "sendAmount": "100.00",
-    },
+
 }
 
 
@@ -304,6 +321,7 @@ async def fetch_myeasytransfer_rate(
 async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | None:
     # Look up parameters from config
     params = MONEYGRAM_CONFIG.get((from_currency, to_currency))
+    global File
     if not params:
         raise ValueError(f"No config found for {from_currency}->{to_currency}")
         return None
@@ -318,7 +336,7 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             )
             # Reuse cookies/local storage
             context = await browser.new_context(
-                storage_state=SESSION_FILE if os.path.exists(SESSION_FILE) else None
+                storage_state= f"SESSION_FILE{File}" if os.path.exists(f"SESSION_FILE{File}") else None
             )
             page = await context.new_page()
 
@@ -328,16 +346,20 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             # Extract JSON text from <pre>
             raw_text = await page.inner_text("pre")
             data = json.loads(raw_text)
-            logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {raw_text}")
+            #logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {raw_text}")
             # Try to extract fxRate for whichever receive currency is present
             fee_quotes = data.get("feeQuotesByCurrency", {})
             fx_rate = None
             if fee_quotes and to_currency in fee_quotes:
                 fx_rate = fee_quotes[to_currency].get("fxRate")
-                # Save session state for next run
-                await context.storage_state(path=SESSION_FILE)
-                logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {fx_rate}")
-
+                
+            # Save session state for next run
+            if fx_rate != None: await context.storage_state(path=f"SESSION_FILE{File}")    
+            logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {fx_rate}")
+            logging.info(f"SESSION_FILE{File}")
+            File = random.randint(1, 4)
+            #else:
+                
             await browser.close()
             return fx_rate
     except Exception as e:
