@@ -326,6 +326,7 @@ MYEASYTRANSFER_CONFIG = {
 
 TARGET_ENDPOINT = "https://www.westernunion.com/router/"
 US_TARGET_ENDPOINT = "https://www.westernunion.com/wuconnect/prices/catalog"
+MG_TARGET_ENDPOINT = "https://www.moneygram.com/api/send-money/fee-quote/v2"
 
 
 # --- MyEasyTransfer scraper ---
@@ -364,63 +365,76 @@ async def fetch_myeasytransfer_rate(
 
 # --- MoneyGram scraper ---
 async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | None:
-    # Look up parameters from config
     params = MONEYGRAM_CONFIG.get((from_currency, to_currency))
-    mgurl= MG_URL.get((from_currency, to_currency))
+    mgurl = MG_URL.get((from_currency, to_currency))
     global File
+
     if not params:
-        raise ValueError(f"No config found for {from_currency}->{to_currency}")
+        logging.error(f"No config found for {from_currency}->{to_currency}")
         return None
 
-    # Build query string dynamically
     query = urlencode(params)
-    url = f"https://www.moneygram.com/api/send-money/fee-quote/v2?{query}"
+    api_url = f"{MG_TARGET_ENDPOINT}?{query}"
+
+    async def try_fetch_api(page):
+        """Try calling the API endpoint and extracting fxRate."""
+        try:
+            await page.goto(api_url, wait_until="domcontentloaded")
+            await page.wait_for_timeout(1500)
+
+            raw_text = await page.inner_text("pre")
+            data = json.loads(raw_text)
+
+            fee_quotes = data.get("feeQuotesByCurrency", {})
+            if to_currency in fee_quotes:
+                return fee_quotes[to_currency].get("fxRate")
+
+        except Exception as e:
+            logging.error(f"[MG API ERROR] {from_currency}->{to_currency}: {e}")
+
+        return None
+
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(
-                headless=False, args=["--disable-blink-features=AutomationControlled"]
+                headless=False,
+                args=["--disable-blink-features=AutomationControlled"]
             )
-            # Reuse cookies/local storage
+
+            # Load session if exists
+            session_path = f"SESSION_FILE{File}"
             context = await browser.new_context(
-                storage_state= f"SESSION_FILE{File}" if os.path.exists(f"SESSION_FILE{File}") else None
+                storage_state=session_path if os.path.exists(session_path) else None
             )
             page = await context.new_page()
 
-            await page.goto(url, wait_until="domcontentloaded")
-            await page.wait_for_timeout(2000)  # wait 2 seconds
+            # --- 1) First attempt: direct API call ---
+            fx_rate = await try_fetch_api(page)
 
-            # Extract JSON text from <pre>
-            raw_text = await page.inner_text("pre")
-            data = json.loads(raw_text)
-            #logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {raw_text}")
-            # Try to extract fxRate for whichever receive currency is present
-            fee_quotes = data.get("feeQuotesByCurrency", {})
-            fx_rate = None
-            if fee_quotes and to_currency in fee_quotes:
-                fx_rate = fee_quotes[to_currency].get("fxRate")
-            else:
+            # --- 2) If failed, load corridor page then retry API ---
+            if fx_rate is None:
+                logging.info(f"[MG FALLBACK] Opening corridor page for {from_currency}->{to_currency}")
                 await page.goto(mgurl["url"], wait_until="domcontentloaded")
-                await page.wait_for_timeout(5000)  # wait 5 seconds
-                await page.goto(url, wait_until="domcontentloaded")
-                await page.wait_for_timeout(2000)  # wait 2 seconds
-                raw_text = await page.inner_text("pre")
-                data = json.loads(raw_text)
-                fee_quotes = data.get("feeQuotesByCurrency", {})
-                fx_rate = fee_quotes[to_currency].get("fxRate")
-                logging.info("CONFIG URL")
-                
-            # Save session state for next run
-            if fx_rate != None: await context.storage_state(path=f"SESSION_FILE{File}")    
-            logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {fx_rate}")
-            logging.info(f"SESSION_FILE{File}")
+                await page.wait_for_timeout(4000)
+
+                fx_rate = await try_fetch_api(page)
+
+            # Save session only if successful
+            if fx_rate is not None:
+                await context.storage_state(path=session_path)
+                logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {fx_rate}")
+            else:
+                logging.error(f"[MG FAILED] No fxRate for {from_currency}->{to_currency}")
+
+            # Rotate session file for next run
             File = random.randint(1, 4)
-                
+
             await browser.close()
             return fx_rate
+
     except Exception as e:
         logging.error(f"[MG EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
-
 
 
 # --- Western Union scraper ---
