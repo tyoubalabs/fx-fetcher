@@ -64,7 +64,63 @@ LEMFI_CONFIG = {
         "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]',
     },
 }
-
+#--- Moneygram fallback config ---
+MG_URL = {
+    ("CAD", "TND"): {
+        "url": "https://www.moneygram.com/ca/en/corridor/tunisia",
+    },
+    ("CAD", "MAD"): {
+        "url": "https://www.moneygram.com/ca/en/corridor/morocco",
+    },
+    ("CAD", "TRY"): {
+        "url": "https://www.moneygram.com/ca/en/corridor/turkey",
+    },
+    ("CAD", "INR"): {
+        "url": "https://www.moneygram.com/ca/en/corridor/india",
+    },
+    ("CAD", "MXN"): {
+        "url": "https://www.moneygram.com/ca/en/corridor/mexico",
+    },
+    ("CAD", "COP"): {
+        "url": "https://www.moneygram.com/ca/en/corridor/colombia",
+    },    
+    ("USD", "MAD"): {
+        "url": "https://www.moneygram.com/us/en/corridor/morocco",
+    },
+    ("USD", "TND"): {
+        "url": "https://www.moneygram.com/us/en/corridor/tunisia",
+    },
+    ("USD", "MXN"): {
+        "url": "https://www.moneygram.com/us/en/corridor/mexico",
+    }, 
+    ("USD", "INR"): {
+        "url": "https://www.moneygram.com/us/en/corridor/india",
+    }, 
+    ("USD", "COP"): {
+        "url": "https://www.moneygram.com/us/en/corridor/colombia",
+    },
+    ("USD", "TRY"): {
+        "url": "https://www.moneygram.com/us/en/corridor/turkey",
+    },    
+    ("EUR", "TND"): {
+        "url": "https://www.moneygram.com/fr/en/corridor/tunisia",
+    },
+    ("EUR", "MAD"): {
+        "url": "https://www.moneygram.com/fr/en/corridor/morocco",
+    },
+    ("EUR", "COP"): {
+        "url": "https://www.moneygram.com/fr/en/corridor/colombia",
+    },
+    ("EUR", "TRY"): {
+        "url": "https://www.moneygram.com/fr/en/corridor/turkey",
+    },
+    ("EUR", "INR"): {
+        "url": "https://www.moneygram.com/fr/en/corridor/india",
+    },
+    ("EUR", "MXN"): {
+        "url": "https://www.moneygram.com/fr/en/corridor/mexico",
+    },    
+}
 # --- Moneygram config ---
 MONEYGRAM_CONFIG = {
     ("CAD", "MAD"): {
@@ -72,28 +128,24 @@ MONEYGRAM_CONFIG = {
         "senderCurrencyCode": "CAD",
         "receiverCountryCode": "MAR",
         "sendAmount": "100.00",
-        "url": "https://www.moneygram.com/ca/en/corridor/morocco",
     },
     ("CAD", "TND"): {
         "senderCountryCode": "CAN",
         "senderCurrencyCode": "CAD",
         "receiverCountryCode": "TUN",
         "sendAmount": "1000.00",
-        "url": "https://www.moneygram.com/ca/en/corridor/tunisia",
     },    
     ("CAD", "MXN"): {
         "senderCountryCode": "CAN",
         "senderCurrencyCode": "CAD",
         "receiverCountryCode": "MEX",
         "sendAmount": "100.00",
-        "url": "https://www.moneygram.com/ca/en/corridor/mexico",
     },
     ("USD", "TND"): {
         "senderCountryCode": "USA",
         "senderCurrencyCode": "USD",
         "receiverCountryCode": "TUN",
         "sendAmount": "100.00",
-        "url": "https://www.moneygram.com/us/en/corridor/tunisia",
     },
     ("USD", "MXN"): {
         "senderCountryCode": "USA",
@@ -106,28 +158,24 @@ MONEYGRAM_CONFIG = {
         "senderCurrencyCode": "USD",
         "receiverCountryCode": "MAR",
         "sendAmount": "100.00",
-        "url": "https://www.moneygram.com/us/en/corridor/morocco",
     },
     ("EUR", "MAD"): {
         "senderCountryCode": "FRA",
         "senderCurrencyCode": "EUR",
         "receiverCountryCode": "MAR",
         "sendAmount": "100.00",
-        "url": "https://www.moneygram.com/fr/en/corridor/morocco",
     },
     ("EUR", "TND"): {
         "senderCountryCode": "FRA",
         "senderCurrencyCode": "EUR",
         "receiverCountryCode": "TUN",
         "sendAmount": "100.00",
-        "url": "https://www.moneygram.com/fr/en/corridor/tunisia",
     },
     ("EUR", "MXN"): {
         "senderCountryCode": "FRA",
         "senderCurrencyCode": "EUR",
         "receiverCountryCode": "MEX",
         "sendAmount": "100.00",
-        "url": "https://www.moneygram.com/fr/en/corridor/mexico",
     },
     ("CAD", "INR"): {
         "senderCountryCode": "CAN",
@@ -140,7 +188,6 @@ MONEYGRAM_CONFIG = {
         "senderCurrencyCode": "USD",
         "receiverCountryCode": "IND",
         "sendAmount": "100.00",
-        "url": "https://www.moneygram.com/us/en/corridor/india",
     },
     ("EUR", "INR"): {
         "senderCountryCode": "FRA",
@@ -153,7 +200,6 @@ MONEYGRAM_CONFIG = {
         "senderCurrencyCode": "CAD",
         "receiverCountryCode": "COL",
         "sendAmount": "100.00",
-        "url": "https://www.moneygram.com/ca/en/corridor/colombia",
     },
     ("USD", "COP"): {
         "senderCountryCode": "USA",
@@ -166,7 +212,6 @@ MONEYGRAM_CONFIG = {
         "senderCurrencyCode": "EUR",
         "receiverCountryCode": "COL",
         "sendAmount": "100.00",
-        "url": "https://www.moneygram.com/fr/en/corridor/colombia",
     },
     ("CAD", "TRY"): {
         "senderCountryCode": "CAN",
@@ -321,6 +366,7 @@ async def fetch_myeasytransfer_rate(
 async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | None:
     # Look up parameters from config
     params = MONEYGRAM_CONFIG.get((from_currency, to_currency))
+    mgurl= MG_URL.get((from_currency, to_currency))
     global File
     if not params:
         raise ValueError(f"No config found for {from_currency}->{to_currency}")
@@ -352,19 +398,29 @@ async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | 
             fx_rate = None
             if fee_quotes and to_currency in fee_quotes:
                 fx_rate = fee_quotes[to_currency].get("fxRate")
+            else:
+                await page.goto(mgurl["url"], wait_until="domcontentloaded")
+                await page.wait_for_timeout(5000)  # wait 5 seconds
+                await page.goto(url, wait_until="domcontentloaded")
+                await page.wait_for_timeout(2000)  # wait 2 seconds
+                raw_text = await page.inner_text("pre")
+                data = json.loads(raw_text)
+                fee_quotes = data.get("feeQuotesByCurrency", {})
+                fx_rate = fee_quotes[to_currency].get("fxRate")
+                logging.info("CONFIG URL")
                 
             # Save session state for next run
             if fx_rate != None: await context.storage_state(path=f"SESSION_FILE{File}")    
             logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {fx_rate}")
             logging.info(f"SESSION_FILE{File}")
             File = random.randint(1, 4)
-            #else:
                 
             await browser.close()
             return fx_rate
     except Exception as e:
         logging.error(f"[MG EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
+
 
 
 # --- Western Union scraper ---
