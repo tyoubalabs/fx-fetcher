@@ -6,7 +6,6 @@ import asyncio
 import logging
 import urllib.request
 import json
-import random
 import webbrowser
 from jsonpath_ng import parse
 from urllib.parse import urlencode
@@ -27,11 +26,7 @@ app.add_middleware(
 
 CACHE_FILE = "fx_rates.json"
 TEMP_CACHE_FILE = "tmp_fx_rates.json"
-SESSION_FILE1 = "moneygram_session1.json"
-SESSION_FILE2 = "moneygram_session2.json"
-SESSION_FILE3 = "moneygram_session3.json"
-SESSION_FILE4 = "moneygram_session4.json"
-File = 1
+SESSION_FILE = "moneygram_session.json"
 
 # --- Lemfi config ---
 LEMFI_CONFIG = {
@@ -64,77 +59,21 @@ LEMFI_CONFIG = {
         "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]',
     },
 }
-#--- Moneygram fallback config ---
-MG_URL = {
-    ("CAD", "TND"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/tunisia",
-    },
-    ("CAD", "MAD"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/morocco",
-    },
-    ("CAD", "TRY"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/turkey",
-    },
-    ("CAD", "INR"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/india",
-    },
-    ("CAD", "MXN"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/mexico",
-    },
-    ("CAD", "COP"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/colombia",
-    },    
-    ("USD", "MAD"): {
-        "url": "https://www.moneygram.com/us/en/corridor/morocco",
-    },
-    ("USD", "TND"): {
-        "url": "https://www.moneygram.com/us/en/corridor/tunisia",
-    },
-    ("USD", "MXN"): {
-        "url": "https://www.moneygram.com/us/en/corridor/mexico",
-    }, 
-    ("USD", "INR"): {
-        "url": "https://www.moneygram.com/us/en/corridor/india",
-    }, 
-    ("USD", "COP"): {
-        "url": "https://www.moneygram.com/us/en/corridor/colombia",
-    },
-    ("USD", "TRY"): {
-        "url": "https://www.moneygram.com/us/en/corridor/turkey",
-    },    
-    ("EUR", "TND"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/tunisia",
-    },
-    ("EUR", "MAD"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/morocco",
-    },
-    ("EUR", "COP"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/colombia",
-    },
-    ("EUR", "TRY"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/turkey",
-    },
-    ("EUR", "INR"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/india",
-    },
-    ("EUR", "MXN"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/mexico",
-    },    
-}
+
 # --- Moneygram config ---
 MONEYGRAM_CONFIG = {
+    ("CAD", "TND"): {
+        "senderCountryCode": "CAN",
+        "senderCurrencyCode": "CAD",
+        "receiverCountryCode": "TUN",
+        "sendAmount": "100.00",
+    },
     ("CAD", "MAD"): {
         "senderCountryCode": "CAN",
         "senderCurrencyCode": "CAD",
         "receiverCountryCode": "MAR",
         "sendAmount": "100.00",
     },
-    ("CAD", "TND"): {
-        "senderCountryCode": "CAN",
-        "senderCurrencyCode": "CAD",
-        "receiverCountryCode": "TUN",
-        "sendAmount": "1000.00",
-    },    
     ("CAD", "MXN"): {
         "senderCountryCode": "CAN",
         "senderCurrencyCode": "CAD",
@@ -219,19 +158,18 @@ MONEYGRAM_CONFIG = {
         "receiverCountryCode": "TUR",
         "sendAmount": "100.00",
     },
-    ("EUR", "TRY"): {
-        "senderCountryCode": "FRA",
-        "senderCurrencyCode": "EUR",
-        "receiverCountryCode": "TUR",
-        "sendAmount": "1000.00",
-    },
     ("USD", "TRY"): {
         "senderCountryCode": "USA",
         "senderCurrencyCode": "USD",
         "receiverCountryCode": "TUR",
         "sendAmount": "100.00",
     },
-
+    ("EUR", "TRY"): {
+        "senderCountryCode": "FRA",
+        "senderCurrencyCode": "EUR",
+        "receiverCountryCode": "TUR",
+        "sendAmount": "100.00",
+    },
 }
 
 
@@ -326,7 +264,6 @@ MYEASYTRANSFER_CONFIG = {
 
 TARGET_ENDPOINT = "https://www.westernunion.com/router/"
 US_TARGET_ENDPOINT = "https://www.westernunion.com/wuconnect/prices/catalog"
-MG_TARGET_ENDPOINT = "https://www.moneygram.com/api/send-money/fee-quote/v2"
 
 
 # --- MyEasyTransfer scraper ---
@@ -365,73 +302,43 @@ async def fetch_myeasytransfer_rate(
 
 # --- MoneyGram scraper ---
 async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | None:
+    # Look up parameters from config
     params = MONEYGRAM_CONFIG.get((from_currency, to_currency))
-    mgurl = MG_URL.get((from_currency, to_currency))
-    global File
-
     if not params:
-        logging.error(f"No config found for {from_currency}->{to_currency}")
+        raise ValueError(f"No config found for {from_currency}->{to_currency}")
         return None
 
+    # Build query string dynamically
     query = urlencode(params)
-    api_url = f"{MG_TARGET_ENDPOINT}?{query}"
-
-    async def try_fetch_api(page):
-        """Try calling the API endpoint and extracting fxRate."""
-        try:
-            await page.goto(api_url, wait_until="domcontentloaded")
-            await page.wait_for_timeout(1500)
-
-            raw_text = await page.inner_text("pre")
-            data = json.loads(raw_text)
-
-            fee_quotes = data.get("feeQuotesByCurrency", {})
-            if to_currency in fee_quotes:
-                return fee_quotes[to_currency].get("fxRate")
-
-        except Exception as e:
-            logging.error(f"[MG API ERROR] {from_currency}->{to_currency}: {e}")
-
-        return None
-
+    url = f"https://www.moneygram.com/api/send-money/fee-quote/v2?{query}"
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(
-                headless=False,
-                args=["--disable-blink-features=AutomationControlled"]
+                headless=False, args=["--disable-blink-features=AutomationControlled"]
             )
-
-            # Load session if exists
-            session_path = f"SESSION_FILE{File}"
+            # Reuse cookies/local storage
             context = await browser.new_context(
-                storage_state=session_path if os.path.exists(session_path) else None
+                storage_state=SESSION_FILE if os.path.exists(SESSION_FILE) else None
             )
             page = await context.new_page()
 
-            # --- 1) First attempt: direct API call ---
-            fx_rate = await try_fetch_api(page)
+            await page.goto(url, wait_until="domcontentloaded")
+            await page.wait_for_timeout(2000)  # wait 2 seconds
 
-            # --- 2) If failed, load corridor page then retry API ---
-            if fx_rate is None:
-                logging.info(f"[MG FALLBACK] Opening corridor page for {from_currency}->{to_currency}")
-                await page.goto(mgurl["url"], wait_until="domcontentloaded")
-                await page.wait_for_timeout(4000)
-
-                fx_rate = await try_fetch_api(page)
-
-            # Save session only if successful
-            if fx_rate is not None:
-                await context.storage_state(path=session_path)
-                logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {fx_rate}")
-            else:
-                logging.error(f"[MG FAILED] No fxRate for {from_currency}->{to_currency}")
-
-            # Rotate session file for next run
-            File = random.randint(1, 4)
+            # Extract JSON text from <pre>
+            raw_text = await page.inner_text("pre")
+            data = json.loads(raw_text)
+            # Save session state for next run
+            await context.storage_state(path=SESSION_FILE)
+            logging.info(f"[MG RAW TEXT] {from_currency}->{to_currency}: {raw_text}")
+            # Try to extract fxRate for whichever receive currency is present
+            fee_quotes = data.get("feeQuotesByCurrency", {})
+            fx_rate = None
+            if fee_quotes and to_currency in fee_quotes:
+                fx_rate = fee_quotes[to_currency].get("fxRate")
 
             await browser.close()
             return fx_rate
-
     except Exception as e:
         logging.error(f"[MG EXCEPTION] {from_currency}->{to_currency}: {e}")
         return None
