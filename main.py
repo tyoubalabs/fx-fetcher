@@ -1,614 +1,226 @@
-from fastapi import FastAPI, Query
-from fastapi.middleware.cors import CORSMiddleware
-from playwright.async_api import async_playwright
-import re, json, time, os
-import asyncio
-import logging
-import urllib.request
+import time
+import re
 import json
-import random
-import webbrowser
-from jsonpath_ng import parse
-from urllib.parse import urlencode
+import logging
+import os
+import asyncio
+from fastapi import FastAPI, Query
+from fastapi.responses import JSONResponse
+from playwright.async_api import async_playwright
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
 )
-
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-CACHE_FILE = "fx_rates.json"
-TEMP_CACHE_FILE = "tmp_fx_rates.json"
-SESSION_FILE1 = "moneygram_session1.json"
-SESSION_FILE2 = "moneygram_session2.json"
-SESSION_FILE3 = "moneygram_session3.json"
-SESSION_FILE4 = "moneygram_session4.json"
-File = 1
-
-# --- Lemfi config ---
-LEMFI_CONFIG = {
-    ("CAD", "TND"): {
-        "url": "https://lemfi.com/en-ca/international-money-transfer/tunisia",
-        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]',
-    },
-    ("CAD", "MAD"): {
-        "url": "https://lemfi.com/en-ca/international-money-transfer/morocco",
-        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]',
-    },
-    ("EUR", "TND"): {
-        "url": "https://lemfi.com/en-fr/international-money-transfer/tunisia",
-        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]',
-    },
-    ("EUR", "MAD"): {
-        "url": "https://lemfi.com/en-fr/international-money-transfer/morocco",
-        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]',
-    },
-    ("CAD", "INR"): {
-        "url": "https://lemfi.com/en-ca/international-money-transfer/india",
-        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]',
-    },
-    ("USD", "INR"): {
-        "url": "https://lemfi.com/en-us/international-money-transfer/india",
-        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]',
-    },
-    ("EUR", "INR"): {
-        "url": "https://lemfi.com/en-fr/international-money-transfer/india",
-        "selector": 'xpath=//*[@id="__nuxt"]/div[2]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/span[2]',
-    },
-}
-#--- Moneygram fallback config ---
-MG_URL = {
-    ("CAD", "TND"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/tunisia",
-    },
-    ("CAD", "MAD"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/morocco",
-    },
-    ("CAD", "TRY"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/turkey",
-    },
-    ("CAD", "INR"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/india",
-    },
-    ("CAD", "MXN"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/mexico",
-    },
-    ("CAD", "COP"): {
-        "url": "https://www.moneygram.com/ca/en/corridor/colombia",
-    },    
-    ("USD", "MAD"): {
-        "url": "https://www.moneygram.com/us/en/corridor/morocco",
-    },
-    ("USD", "TND"): {
-        "url": "https://www.moneygram.com/us/en/corridor/tunisia",
-    },
-    ("USD", "MXN"): {
-        "url": "https://www.moneygram.com/us/en/corridor/mexico",
-    }, 
-    ("USD", "INR"): {
-        "url": "https://www.moneygram.com/us/en/corridor/india",
-    }, 
-    ("USD", "COP"): {
-        "url": "https://www.moneygram.com/us/en/corridor/colombia",
-    },
-    ("USD", "TRY"): {
-        "url": "https://www.moneygram.com/us/en/corridor/turkey",
-    },    
-    ("EUR", "TND"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/tunisia",
-    },
-    ("EUR", "MAD"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/morocco",
-    },
-    ("EUR", "COP"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/colombia",
-    },
-    ("EUR", "TRY"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/turkey",
-    },
-    ("EUR", "INR"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/india",
-    },
-    ("EUR", "MXN"): {
-        "url": "https://www.moneygram.com/fr/en/corridor/mexico",
-    },    
-}
-# --- Moneygram config ---
-MONEYGRAM_CONFIG = {
-    ("CAD", "MAD"): {
-        "senderCountryCode": "CAN",
-        "senderCurrencyCode": "CAD",
-        "receiverCountryCode": "MAR",
-        "sendAmount": "100.00",
-    },
-    ("CAD", "TND"): {
-        "senderCountryCode": "CAN",
-        "senderCurrencyCode": "CAD",
-        "receiverCountryCode": "TUN",
-        "sendAmount": "1000.00",
-    },    
-    ("CAD", "MXN"): {
-        "senderCountryCode": "CAN",
-        "senderCurrencyCode": "CAD",
-        "receiverCountryCode": "MEX",
-        "sendAmount": "100.00",
-    },
-    ("USD", "TND"): {
-        "senderCountryCode": "USA",
-        "senderCurrencyCode": "USD",
-        "receiverCountryCode": "TUN",
-        "sendAmount": "100.00",
-    },
-    ("USD", "MXN"): {
-        "senderCountryCode": "USA",
-        "senderCurrencyCode": "USD",
-        "receiverCountryCode": "MEX",
-        "sendAmount": "100.00",
-    },
-    ("USD", "MAD"): {
-        "senderCountryCode": "USA",
-        "senderCurrencyCode": "USD",
-        "receiverCountryCode": "MAR",
-        "sendAmount": "100.00",
-    },
-    ("EUR", "MAD"): {
-        "senderCountryCode": "FRA",
-        "senderCurrencyCode": "EUR",
-        "receiverCountryCode": "MAR",
-        "sendAmount": "100.00",
-    },
-    ("EUR", "TND"): {
-        "senderCountryCode": "FRA",
-        "senderCurrencyCode": "EUR",
-        "receiverCountryCode": "TUN",
-        "sendAmount": "100.00",
-    },
-    ("EUR", "MXN"): {
-        "senderCountryCode": "FRA",
-        "senderCurrencyCode": "EUR",
-        "receiverCountryCode": "MEX",
-        "sendAmount": "100.00",
-    },
-    ("CAD", "INR"): {
-        "senderCountryCode": "CAN",
-        "senderCurrencyCode": "CAD",
-        "receiverCountryCode": "IND",
-        "sendAmount": "100.00",
-    },
-    ("USD", "INR"): {
-        "senderCountryCode": "USA",
-        "senderCurrencyCode": "USD",
-        "receiverCountryCode": "IND",
-        "sendAmount": "100.00",
-    },
-    ("EUR", "INR"): {
-        "senderCountryCode": "FRA",
-        "senderCurrencyCode": "EUR",
-        "receiverCountryCode": "IND",
-        "sendAmount": "100.00",
-    },
-    ("CAD", "COP"): {
-        "senderCountryCode": "CAN",
-        "senderCurrencyCode": "CAD",
-        "receiverCountryCode": "COL",
-        "sendAmount": "100.00",
-    },
-    ("USD", "COP"): {
-        "senderCountryCode": "USA",
-        "senderCurrencyCode": "USD",
-        "receiverCountryCode": "COL",
-        "sendAmount": "100.00",
-    },
-    ("EUR", "COP"): {
-        "senderCountryCode": "FRA",
-        "senderCurrencyCode": "EUR",
-        "receiverCountryCode": "COL",
-        "sendAmount": "100.00",
-    },
-    ("CAD", "TRY"): {
-        "senderCountryCode": "CAN",
-        "senderCurrencyCode": "CAD",
-        "receiverCountryCode": "TUR",
-        "sendAmount": "100.00",
-    },
-    ("EUR", "TRY"): {
-        "senderCountryCode": "FRA",
-        "senderCurrencyCode": "EUR",
-        "receiverCountryCode": "TUR",
-        "sendAmount": "1000.00",
-    },
-    ("USD", "TRY"): {
-        "senderCountryCode": "USA",
-        "senderCurrencyCode": "USD",
-        "receiverCountryCode": "TUR",
-        "sendAmount": "100.00",
-    },
-
-}
 
 
-# --- Western Union config ---
-WU_CONFIG = {
-    ("CAD", "TND"): {
-        "url": "https://www.westernunion.com/ca/en/send-money-to-tunisia.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span',
-    },
-    ("CAD", "MAD"): {
-        "url": "https://www.westernunion.com/ca/en/send-money-to-morocco.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span',
-    },
-    ("USD", "TND"): {
-        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-tnd-rate.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span',
-    },
-    ("USD", "MAD"): {
-        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-mad-rate.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span',
-    },
-    ("EUR", "TND"): {
-        "url": "https://www.westernunion.com/fr/en/send-money-to-tunisia.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span',
-    },
-    ("EUR", "MAD"): {
-        "url": "https://www.westernunion.com/fr/en/send-money-to-morocco.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span',
-    },
-    ("EUR", "MXN"): {
-        "url": "https://www.westernunion.com/fr/en/send-money-to-mexico.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span',
-    },
-    ("CAD", "MXN"): {
-        "url": "https://www.westernunion.com/ca/fr/send-money-to-mexico.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/strong/span',
-    },
-    ("USD", "MXN"): {
-        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-mxn-rate.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span',
-    },
-    ("EUR", "INR"): {
-        "url": "https://www.westernunion.com/fr/en/send-money-to-india.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span',
-    },
-    ("CAD", "INR"): {
-        "url": "https://www.westernunion.com/ca/fr/send-money-to-india.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/strong/span',
-    },
-    ("USD", "INR"): {
-        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-inr-rate.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span',
-    },
-    ("EUR", "TRY"): {
-        "url": "https://www.westernunion.com/fr/en/send-money-to-turkey.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span',
-    },
-    ("CAD", "TRY"): {
-        "url": "https://www.westernunion.com/ca/en/send-money-to-turkey.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span',
-    },
-    ("USD", "TRY"): {
-        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-try-rate.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span',
-    },
-    ("EUR", "COP"): {
-        "url": "https://www.westernunion.com/fr/en/send-money-to-colombia.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/span/span',
-    },
-    ("CAD", "COP"): {
-        "url": "https://www.westernunion.com/ca/fr/send-money-to-colombia.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[2]/p/span[1]/span[1]/strong/span',
-    },
-    ("USD", "COP"): {
-        "url": "https://www.westernunion.com/us/en/currency-converter/usd-to-cop-rate.html",
-        "selector": 'xpath=//*[@id="body-component"]/section[1]/section[1]/div[1]/div/div/div[3]/p/span[1]/span[1]/span/span',
-    },
-}
+# ---------------- HELPERS ----------------
 
-# --- MyEasyTransfer config ---
-MYEASYTRANSFER_CONFIG = {
-    ("EUR", "TND"): {
-        "departureCurrencyId": "623d820a0b5a9d374d8becab",  # example EUR
-        "destinationCurrencyId": "65f4a7651529e3e101439541",  # example TND
-    },
-    ("EUR", "MAD"): {
-        "departureCurrencyId": "623d820a0b5a9d374d8becab",  # EUR
-        "destinationCurrencyId": "617aa96c6f86345324eb252f",  # MAD
-    },
-}
+def extract_cid_from_url(url):
+    match = re.search(r'!1s([^!]+)!', url)
+    return match.group(1) if match else "N/A"
 
 
-TARGET_ENDPOINT = "https://www.westernunion.com/router/"
-US_TARGET_ENDPOINT = "https://www.westernunion.com/wuconnect/prices/catalog"
-MG_TARGET_ENDPOINT = "https://www.moneygram.com/api/send-money/fee-quote/v2"
-
-
-# --- MyEasyTransfer scraper ---
-async def fetch_myeasytransfer_rate(
-    from_currency: str, to_currency: str
-) -> float | None:
-    params = MYEASYTRANSFER_CONFIG.get((from_currency, to_currency))
-    if not params:
-        logging.error(f"[EASYTR ERROR] Unsupported pair {from_currency}->{to_currency}")
-        return None
-
-    query = urlencode(params)
-    url = f"https://www.api.myeasytransfer.com/v1/fxrates/fxrate?{query}"
-    logging.debug(f"[EASYTR] url: {url}")
+async def extract_single_address(page):
+    # Desktop layout
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=False, args=["--disable-blink-features=AutomationControlled"]
-            )
-            page = await browser.new_page()
-            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            await page.wait_for_timeout(2000)
+        addr = await page.locator('(//div[@class="rogA2c "])[1]').inner_text()
+        logger.info("Address extracted using desktop selector.")
+        return addr.strip()
+    except:
+        pass
 
-            raw_text = await page.inner_text("pre")
-            data = json.loads(raw_text)
-            logging.info(
-                f"[MyEasyTransfer RAW TEXT] {from_currency}->{to_currency}: {raw_text}"
-            )
-            fx_rate_bank = data["fxRate"]["fxRateBank"]
-            await browser.close()
-            return fx_rate_bank
-    except Exception as e:
-        logging.error(f"[MyEasyTransfer EXCEPTION] {from_currency}->{to_currency}: {e}")
-        return None
-
-
-# --- MoneyGram scraper ---
-async def fetch_moneygram_rate(from_currency: str, to_currency: str) -> float | None:
-    params = MONEYGRAM_CONFIG.get((from_currency, to_currency))
-    mgurl = MG_URL.get((from_currency, to_currency))
-    global File
-
-    if not params:
-        logging.error(f"No config found for {from_currency}->{to_currency}")
-        return None
-
-    query = urlencode(params)
-    api_url = f"{MG_TARGET_ENDPOINT}?{query}"
-
-    async def try_fetch_api(page):
-        """Try calling the API endpoint and extracting fxRate."""
-        try:
-            await page.goto(api_url, wait_until="domcontentloaded")
-            await page.wait_for_timeout(1500)
-
-            raw_text = await page.inner_text("pre")
-            data = json.loads(raw_text)
-
-            fee_quotes = data.get("feeQuotesByCurrency", {})
-            if to_currency in fee_quotes:
-                return fee_quotes[to_currency].get("fxRate")
-
-        except Exception as e:
-            logging.error(f"[MG API ERROR] {from_currency}->{to_currency}: {e}")
-
-        return None
-
+    # New 2024+ layout
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=False,
-                args=["--disable-blink-features=AutomationControlled"]
-            )
+        addr = await page.locator(
+            '//button[@data-item-id="address"]//div[contains(@class,"Io6YTe")]'
+        ).inner_text()
+        logger.info("Address extracted using new 2024+ selector.")
+        return addr.strip()
+    except:
+        pass
 
-            # Load session if exists
-            session_path = f"SESSION_FILE{File}"
-            context = await browser.new_context(
-                storage_state=session_path if os.path.exists(session_path) else None
-            )
-            page = await context.new_page()
+    # Fallback
+    try:
+        blocks = page.locator('//div[contains(@class,"Io6YTe")]')
+        count = await blocks.count()
+        for i in range(count):
+            txt = (await blocks.nth(i).inner_text()).strip()
+            if len(txt) > 5 and any(ch.isdigit() for ch in txt):
+                logger.info("Address extracted using fallback Io6YTe selector.")
+                return txt
+    except:
+        pass
 
-            # --- 1) First attempt: direct API call ---
-            fx_rate = await try_fetch_api(page)
-
-            # --- 2) If failed, load corridor page then retry API ---
-            if fx_rate is None:
-                logging.info(f"[MG FALLBACK] Opening corridor page for {from_currency}->{to_currency}")
-                await page.goto(mgurl["url"], wait_until="domcontentloaded")
-                await page.wait_for_timeout(4000)
-
-                fx_rate = await try_fetch_api(page)
-
-            # Save session only if successful
-            if fx_rate is not None:
-                await context.storage_state(path=session_path)
-                logging.info(f"[MG RATE ADDED] {from_currency}->{to_currency}: {fx_rate}")
-            else:
-                logging.error(f"[MG FAILED] No fxRate for {from_currency}->{to_currency}")
-
-            # Rotate session file for next run
-            File = random.randint(1, 4)
-
-            await browser.close()
-            return fx_rate
-
-    except Exception as e:
-        logging.error(f"[MG EXCEPTION] {from_currency}->{to_currency}: {e}")
-        return None
+    logger.warning("Failed to extract address using all selectors.")
+    return "N/A"
 
 
-# --- Western Union scraper ---
-async def fetch_wu_rate(from_currency: str, to_currency: str) -> float | None:
-    config = WU_CONFIG.get((from_currency, to_currency))
-    if not config:
-        raise ValueError(f"No config found for {from_currency} → {to_currency}")
+async def extract_multi_address(card):
+    # Icon layout
+    try:
+        addr = await card.locator(
+            './/div[@class="W4Efsd"][1]/span[3]/span[2]'
+        ).inner_text()
+        return addr.strip()
+    except:
+        pass
 
-    url = config["url"]
-    rate: float | None = None
-    rate_event = asyncio.Event()
+    # No icon layout
+    try:
+        addr = await card.locator(
+            './/div[@class="W4Efsd"][1]/span[2]/span[2]'
+        ).inner_text()
+        return addr.strip()
+    except:
+        pass
+
+    return "N/A"
+
+
+# ---------------- SCRAPER CORE ----------------
+
+async def scrape_google_maps(location, keyword):
+    logger.info(f"Scraping: location='{location}', keyword='{keyword}'")
+
+    url = f"https://www.google.com/maps/place/{location}"
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
 
-        async def handle_response(response):
-            nonlocal rate
+        await page.goto(url, wait_until="domcontentloaded")
+        await page.wait_for_timeout(3000)
+
+        search_query = f"{keyword} near {location.replace('+', ' ')}"
+        logger.info(f"Searching for: {search_query}")
+
+        await page.fill("#searchboxinput", search_query)
+        await page.keyboard.press("Enter")
+        await page.wait_for_timeout(5000)
+
+        # Detect single result
+        feed_exists = await page.locator('//div[@role="feed"]').count()
+
+        if feed_exists == 0:
+            logger.info("Detected SINGLE result page.")
+
             try:
-                if response.url.startswith(TARGET_ENDPOINT):
-                    data = await response.json()
-                    expr = parse("$.data.products.products[7].strikeExchangeRate")
-                elif (
-                    from_currency.upper() == "USD"
-                    and US_TARGET_ENDPOINT in response.url
-                ):
-                    data = await response.json()
-                    expr = parse("$.categories[0].services[0].strike_fx_rate")
-                elif (
-                    from_currency.upper() == "EUR"
-                    and US_TARGET_ENDPOINT in response.url
-                ):
-                    data = await response.json()
-                    expr = parse("$.services_groups[1].pay_groups[0].strike_fx_rate")
-                else:
-                    return
+                name = await page.locator('//h1[contains(@class,"DUwDvf")]').inner_text()
+            except:
+                name = "N/A"
 
-                matches = [m.value for m in expr.find(data)]
-                if matches:
-                    rate = round(float(matches[0]), 4)
-                    print(f"🎯 {from_currency}->{to_currency} strikeExchangeRate:", rate)
-                    rate_event.set()
-            except Exception as e:
-                print("⚠️ Could not parse JSON:", e)
-                logging.error(f"[WU EXCEPTION] {from_currency}->{to_currency}: {e}")
+            address = await extract_single_address(page)
 
-        page.on("response", handle_response)
+            try:
+                rating = await page.locator('//div[contains(@class,"F7nice")]').inner_text()
+            except:
+                rating = "N/A"
 
-        await page.goto(url, timeout=60000)
-        await page.wait_for_timeout(15000)
+            try:
+                reviews = await page.locator('//span[contains(@class,"UY7F9")]').inner_text()
+            except:
+                reviews = "N/A"
 
-        # Wait until the handler sets the event or timeout
-        try:
-            await asyncio.wait_for(rate_event.wait(), timeout=15)
-        except asyncio.TimeoutError:
-            print("⚠️ Timed out waiting for WU JSON")
-            logging.error("Timed out waiting for WU JSON")
+            if reviews == "N/A" or not any(ch.isdigit() for ch in reviews):
+                logger.info("Single result has no reviews — skipping.")
+                await browser.close()
+                return []
 
-        await browser.close()
-        return rate
-
-
-
-# --- Lemfi scraper ---
-async def fetch_lemfi_rate(from_currency: str, to_currency: str) -> float | None:
-    key = (from_currency.upper(), to_currency.upper())
-    if key not in LEMFI_CONFIG:
-        logging.error(f"[LemFi ERROR] Unsupported pair {from_currency}->{to_currency}")
-        return None
-
-    config = LEMFI_CONFIG[key]
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=True, args=["--disable-blink-features=AutomationControlled"]
-            )
-            page = await browser.new_page()
-            await page.goto(config["url"], wait_until="networkidle", timeout=30000)
-            await page.wait_for_timeout(3000)  # wait 3 seconds
-            await page.wait_for_selector(config["selector"], timeout=30000)
-            text = await page.locator(config["selector"]).inner_text()
-            text = text.split("=")[1].strip()
-            rate = re.search(r"([\d.,]+)", text).group(1)
-            logging.info(f"[LemFi RAW TEXT] {from_currency}->{to_currency}: {text}")
+            cid = extract_cid_from_url(page.url)
 
             await browser.close()
-            return rate
-    except Exception as e:
-        logging.error(f"[LemFi EXCEPTION] {from_currency}->{to_currency}: {e}")
-        return None
+            return [{
+                "name": name,
+                "address": address,
+                "rating": rating,
+                "reviews": reviews,
+                "cid": cid
+            }]
+
+        # MULTIPLE RESULTS
+        logger.info("Detected MULTIPLE results page.")
+
+        scroll_area = page.locator('//div[@role="feed"]')
+
+        # Scroll until end
+        last_height = 0
+        same_count = 0
+
+        while True:
+            await scroll_area.evaluate("el => el.scrollTop = el.scrollHeight")
+            await page.wait_for_timeout(2000)
+
+            new_height = await scroll_area.evaluate("el => el.scrollHeight")
+
+            if new_height == last_height:
+                same_count += 1
+            else:
+                same_count = 0
+
+            if same_count >= 3:
+                break
+
+            last_height = new_height
+
+        cards = page.locator('.Nv2PK')
+        count = await cards.count()
+        logger.info(f"Found {count} raw results.")
+
+        extracted = []
+
+        for i in range(count):
+            card = cards.nth(i)
+
+            try:
+                name = await card.locator('.qBF1Pd').inner_text()
+            except:
+                name = "N/A"
+
+            address = await extract_multi_address(card)
+
+            try:
+                rating = await card.locator('.MW4etd').inner_text()
+            except:
+                rating = "N/A"
+
+            try:
+                reviews = await card.locator('.UY7F9').inner_text()
+            except:
+                reviews = "N/A"
+
+            if reviews == "N/A" or not any(ch.isdigit() for ch in reviews):
+                continue
+
+            try:
+                href = await card.locator("a").get_attribute("href")
+                cid = extract_cid_from_url(href)
+            except:
+                cid = "N/A"
+
+            extracted.append({
+                "name": name,
+                "address": address,
+                "rating": rating,
+                "reviews": reviews,
+                "cid": cid
+            })
+
+        await browser.close()
+        return extracted
 
 
-# --- Refresh endpoint ---
-async def refresh():
-    while True:
-        results = {}
+# ---------------- FASTAPI ENDPOINT ----------------
 
-        for from_cur, to_cur in MONEYGRAM_CONFIG.keys():
-            results[f"MG_{from_cur}_{to_cur}"] = await fetch_moneygram_rate(
-                from_cur, to_cur
-            )
-            logging.info("[NEW MG RATE ADDED]")
-            results[f"WU_{from_cur}_{to_cur}"] = await fetch_wu_rate(from_cur, to_cur)
-            logging.info("[NEW WU RATE ADDED]")
-            results[f"LEMFI_{from_cur}_{to_cur}"] = await fetch_lemfi_rate(
-                from_cur, to_cur
-            )
-            logging.info("[NEW LEMFI RATE ADDED]")
-            results[f"MET_{from_cur}_{to_cur}"] = await fetch_myeasytransfer_rate(
-                from_cur, to_cur
-            )
-            logging.info("[NEW EASYTR RATE ADDED]")
-
-        # --- Write to temp file first ---
-        new_cache = {"timestamp": time.time(), "rates": results}
-        with open(TEMP_CACHE_FILE, "w") as f:
-            json.dump(new_cache, f)
-
-        # --- Atomically replace main cache file ---
-        os.replace(TEMP_CACHE_FILE, CACHE_FILE)
-
-        logging.info("[CACHE UPDATED]")
-        # sleep 2 hours
-        await asyncio.sleep(7200)
+@app.get("/scrape")
+async def scrape_endpoint(location: str, keyword: str):
+    data = await scrape_google_maps(location, keyword)
+    return JSONResponse(content=data)
 
 
-# --- Endpoints that read cache ---
-@app.get("/moneygram")
-async def moneygram(from_currency: str = Query(...), to_currency: str = Query(...)):
-    if not os.path.exists(CACHE_FILE):
-        return {"MoneyGram": None, "error": "Cache not ready"}
-    with open(CACHE_FILE, "r") as f:
-        cache = json.load(f)
-    key = f"MG_{from_currency.upper()}_{to_currency.upper()}"
-    return {"MoneyGram": cache["rates"].get(key), "cached_at": cache["timestamp"]}
-
-
-@app.get("/wu")
-async def wu(from_currency: str = Query(...), to_currency: str = Query(...)):
-    if not os.path.exists(CACHE_FILE):
-        return {"Western_Union": None, "error": "Cache not ready"}
-    with open(CACHE_FILE, "r") as f:
-        cache = json.load(f)
-    key = f"WU_{from_currency.upper()}_{to_currency.upper()}"
-    return {"Western_Union": cache["rates"].get(key), "cached_at": cache["timestamp"]}
-
-
-@app.get("/lemfi")
-async def wu(from_currency: str = Query(...), to_currency: str = Query(...)):
-    if not os.path.exists(CACHE_FILE):
-        return {"Lemfi": None, "error": "Cache not ready"}
-    with open(CACHE_FILE, "r") as f:
-        cache = json.load(f)
-    key = f"LEMFI_{from_currency.upper()}_{to_currency.upper()}"
-    return {"Lemfi": cache["rates"].get(key), "cached_at": cache["timestamp"]}
-
-
-@app.get("/myeasytransfer")
-async def myeasytransfer(
-    from_currency: str = Query(...), to_currency: str = Query(...)
-):
-    if not os.path.exists(CACHE_FILE):
-        return {"MyEasyTransfer": None, "error": "Cache not ready"}
-    with open(CACHE_FILE, "r") as f:
-        cache = json.load(f)
-    key = f"MET_{from_currency.upper()}_{to_currency.upper()}"
-    return {"MyEasyTransfer": cache["rates"].get(key), "cached_at": cache["timestamp"]}
-
-
-@app.get("/ping")
-def ping():
+@app.get("/health")
+def health():
     return {"status": "ok"}
-
-
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(refresh())
