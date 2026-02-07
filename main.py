@@ -7,6 +7,8 @@ import logging
 import urllib.request
 import json
 import webbrowser
+import requests 
+from jsonpath_ng.ext import parse
 from jsonpath_ng import parse
 from urllib.parse import urlencode
 
