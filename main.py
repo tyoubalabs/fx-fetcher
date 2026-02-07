@@ -28,6 +28,45 @@ CACHE_FILE = "fx_rates.json"
 TEMP_CACHE_FILE = "tmp_fx_rates.json"
 SESSION_FILE = "moneygram_session.json"
 
+# -- TapTap config ---
+TAPTAP_URL = "https://api.taptapsend.com/api/fxRates"
+TAPTAP_HEADERS = {
+    "appian-version": "web/2022-05-03.0",
+    "x-device-id": "web",
+    "x-device-model": "web",
+}
+
+
+def extract_rate(data, source, target):
+    try:
+        jsonpath_expr = parse(
+            f"$.availableCountries[?(@.currency=='{source}')].corridors[?(@.currency=='{target}')].fxRate"
+        )
+        matches = jsonpath_expr.find(data)
+        if matches:
+            return float(matches[0].value)
+    except Exception:
+        pass
+    return None
+
+
+@app.get("/taptap")
+def get_taptap_rate(
+    from_currency: str = Query(..., alias="from"),
+    to_currency: str = Query(..., alias="to"),
+):
+    try:
+        response = requests.get(TAPTAP_URL, headers=TAPTAP_HEADERS, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        rate = extract_rate(data, from_currency, to_currency)
+
+        return {"provider": "TapTap Send", "rate": rate}
+
+    except Exception as e:
+        return {"provider": "TapTap Send", "rate": None, "error": str(e)}
+
 # --- Lemfi config ---
 LEMFI_CONFIG = {
     ("CAD", "TND"): {
