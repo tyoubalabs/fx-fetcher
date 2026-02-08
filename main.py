@@ -61,7 +61,7 @@ def get_taptap_rate(
         response = requests.get(TAPTAP_URL, headers=TAPTAP_HEADERS, timeout=10)
         response.raise_for_status()
         data = response.json()
-
+        logging.info(data)
         rate = extract_rate(data, from_currency, to_currency)
 
         return {"provider": "TapTap Send", "rate": rate}
