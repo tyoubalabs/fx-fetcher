@@ -41,15 +41,18 @@ TAPTAP_HEADERS = {
 
 def extract_rate(data, source, target):
     try:
-        jsonpath_expr = parse(
-            f"$.availableCountries[?(@.currency=='{source}')].corridors[?(@.currency=='{target}')].fxRate"
-        )
-        matches = jsonpath_expr.find(data)
-        if matches:
-            return float(matches[0].value)
-    except Exception:
-        pass
-    return None
+        countries = data.get("availableCountries", [])
+        for country in countries:
+            if country.get("currency") == source:
+                for corridor in country.get("corridors", []):
+                    if corridor.get("currency") == target:
+                        return float(corridor.get("fxRate"))
+        return None
+    except Exception as e:
+        print("extract_rate error:", e)
+        return None
+
+
 
 
 @app.get("/taptap")
